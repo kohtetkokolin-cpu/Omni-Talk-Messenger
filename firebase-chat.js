@@ -262,7 +262,7 @@ function getDirectChatRoomId(uid1, uid2){
   return [uid1, uid2].sort().join('_');
 }
 
-/** Core AI On-Read Auto-Translation */
+/** Core AI On-Read Auto-Translation Pipeline */
 async function translateMessageOnRead(rawText, sourceLang, targetLang){
   if(!rawText || !rawText.trim()) return '';
   if(sourceLang && sourceLang === targetLang) return rawText;
@@ -272,34 +272,70 @@ async function translateMessageOnRead(rawText, sourceLang, targetLang){
 
   try{
     let translated = '';
-    // If Gemini API Key is configured in state
+    // Tier 1: Gemini AI Translation with Multi-Model & Domain support
     if(typeof state !== 'undefined' && state.apiKey){
-      translated = await callGeminiTranslate(rawText, sourceLang, targetLang, state.apiKey);
-    } else {
+      translated = await callGeminiTranslate(rawText, sourceLang, targetLang, state.apiKey, state.aiModel, state.aiDomain);
+    } 
+    // Tier 2: MyMemory Cloud Fallback
+    if(!translated){
       translated = await callMyMemoryTranslate(rawText, sourceLang, targetLang);
     }
+    // Tier 3: Offline Dictionary Phrase matching
+    if(!translated){
+      translated = offlineDictionaryTranslate(rawText, sourceLang, targetLang);
+    }
+
     if(translated){
       translationCache[cacheKey] = translated;
       return translated;
     }
   }catch(e){
-    console.warn('Translation failed on read:', e);
+    console.warn('Translation pipeline notice:', e);
   }
-  return rawText;
+  return offlineDictionaryTranslate(rawText, sourceLang, targetLang) || rawText;
+}
+
+function offlineDictionaryTranslate(text, sCode, tCode){
+  const norm = (text || '').trim().toLowerCase();
+  for(const p of PHRASEBOOK){
+    if(p[sCode] && p[sCode].toLowerCase() === norm){
+      return p[tCode] || text;
+    }
+  }
+  for(const p of PHRASES){
+    if(p[sCode] && p[sCode].toLowerCase() === norm){
+      return p[tCode] || text;
+    }
+  }
+  return text;
 }
 
 async function callMyMemoryTranslate(text, src, tgt){
-  const s = src || 'en';
-  const t = tgt || 'my';
-  const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${s}|${t}`;
-  const res = await fetch(url);
-  const data = await res.json();
-  return data?.responseData?.translatedText || text;
+  try {
+    const s = src || 'en';
+    const t = tgt || 'my';
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${s}|${t}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    const result = data?.responseData?.translatedText;
+    if(result && !result.includes('MYMEMORY WARNING')) return result;
+  } catch(e){}
+  return '';
 }
 
-async function callGeminiTranslate(text, src, tgt, key){
-  const prompt = `Translate the following chat message into target language code "${tgt}". Keep the tone natural and preserve emojis and names. Output ONLY the translated text.\n\nMessage: "${text}"`;
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
+async function callGeminiTranslate(text, src, tgt, key, model = 'gemini-2.0-flash', domain = 'general'){
+  const domainPrompts = {
+    general: 'general conversation',
+    workplace: 'workplace, factory operations, safety rules, engineering, and overtime tasks',
+    medical: 'medical symptoms, clinics, healthcare, and pharmacy',
+    immigration: 'visa, passport, work permit, and legal immigration matters'
+  };
+  const domainContext = domainPrompts[domain] || domainPrompts.general;
+  const prompt = `You are a high-precision real-time cross-language translator. Translate the following message from language code "${src||'auto'}" into target language code "${tgt}". Context is ${domainContext}. Keep the translation natural, fluent, and preserve technical terms, names, and emojis. Output ONLY the translated text.\n\nMessage: "${text}"`;
+  
+  const chosenModel = model || 'gemini-2.0-flash';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${chosenModel}:generateContent?key=${key}`;
+  
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -309,7 +345,7 @@ async function callGeminiTranslate(text, src, tgt, key){
     })
   });
   const data = await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || text;
+  return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
 }
 
 /** Render Messages in WeChat / DingTalk Stream */
