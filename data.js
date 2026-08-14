@@ -1,5 +1,5 @@
 /* ==========================================================
-   Walkie-Talkie & Polyglot Messenger — data.js
+   OmniTalk — data.js
    Languages, phrasebooks, offline dictionaries, vocabulary.
 ========================================================== */
 
@@ -27,63 +27,68 @@ function langByCode(code){
 }
 
 function langOptionLabel(l){
-  return `${l.flag} ${l.name}${l.offline ? ' (Offline✓)' : ''}`;
+  return `${l.flag} ${l.name}`;
 }
 
-let translationMemory = {};
-try{
-  const tmSaved = localStorage.getItem('wt_translationMemory');
-  if(tmSaved) translationMemory = JSON.parse(tmSaved) || {};
-}catch(e){}
-
 const PHRASEBOOK = [
+  // 1. Emergency
   { cat: 'emergency', en: 'Help me please!', my: 'ကျေးဇူးပြု၍ ကူညီပါ!', zh: '请帮帮我！', th: 'ช่วยด้วยครับ/ค่ะ!' },
-  { cat: 'emergency', en: 'Call the police!', my: 'ရဲခေါ်ပေးပါ!', zh: '请叫警察！', th: 'เรียกตำรวจให้หน่อย!' },
-  { cat: 'emergency', en: 'Call an ambulance immediately!', my: 'လူနာတင်ယာဉ် အမြန်ခေါ်ပေးပါ!', zh: '快叫救护车！', th: 'เรียกรถพยาบาลด่วน!' },
+  { cat: 'emergency', en: 'Call the police immediately!', my: 'ရဲ အမြန်ခေါ်ပေးပါ!', zh: '快叫警察！', th: 'เรียกตำรวจด่วน!' },
+  { cat: 'emergency', en: 'Call an ambulance!', my: 'လူနာတင်ယာဉ် ခေါ်ပေးပါ!', zh: '快叫救护车！', th: 'เรียกรถพยาบาล!' },
   { cat: 'emergency', en: 'There is a fire!', my: 'မီးလောင်နေတယ်!', zh: '着火了！', th: 'ไฟไหม้!' },
-  { cat: 'medical', en: 'I feel very sick.', my: 'ကျွန်တော်/ကျွန်မ နေမကောင်းဖြစ်နေပါတယ်။', zh: '我感觉很不舒服。', th: 'ฉันรู้สึกไม่สบายมาก' },
-  { cat: 'medical', en: 'Where is the hospital?', my: 'ဆေးရုံ ဘယ်နားမှာလဲ?', zh: '医院在哪里？', th: 'โรงพยาบาลอยู่ที่ไหน?' },
-  { cat: 'medical', en: 'I need to see a doctor.', my: 'ဆရာဝန်နဲ့ ပြသဖို့ လိုအပ်ပါတယ်။', zh: '我需要看医生。', th: 'ฉันต้องไปพบแพทย์' },
-  { cat: 'medical', en: 'I have severe pain here.', my: 'ဒီနေရာက အရမ်းနာကျင်နေပါတယ်။', zh: '我这里非常疼。', th: 'ฉันปวดตรงนี้มาก' },
+  { cat: 'emergency', en: 'I had an accident.', my: 'ကျွန်တော်/မ မတော်တဆမှု ဖြစ်ခဲ့ပါတယ်။', zh: '我发生了意外。', th: 'ฉันประสบอุบัติเหตุ' },
+  { cat: 'emergency', en: 'I am lost, please help me.', my: 'လမ်းပျောက်နေလို့ ကူညီပေးပါခင်ဗျာ။', zh: '我迷路了，请帮帮我。', th: 'ฉันหลงทาง ช่วยหน่อยครับ/ค่ะ' },
+  { cat: 'emergency', en: 'Where is the emergency exit?', my: 'အရေးပေါ် ထွက်ပေါက် ဘယ်မှာလဲ?', zh: '紧急出口在哪里？', th: 'ทางออกฉุกเฉินอยู่ที่ไหน?' },
+
+  // 2. Workplace & Factory
   { cat: 'workplace', en: 'What is today’s task?', my: 'ဒီနေ့ လုပ်ရမယ့် အလုပ်က ဘာလဲခင်ဗျာ?', zh: '今天的任务是什么？', th: 'งานวันนี้คืออะไรครับ/ค่ะ?' },
-  { cat: 'workplace', en: 'This machine is not working.', my: 'ဒီစက် ပျက်နေပါတယ်/အလုပ်မလုပ်တော့ပါခင်ဗျာ။', zh: '这台机器坏了/不运转。', th: 'เครื่องนี้ไม่ทำงานครับ/ค่ะ' },
+  { cat: 'workplace', en: 'This machine is broken / not working.', my: 'ဒီစက် ပျက်နေပါတယ်/အလုပ်မလုပ်တော့ပါ။', zh: '这台机器坏了/不运转。', th: 'เครื่องนี้เสีย/ไม่ทำงานครับ' },
   { cat: 'workplace', en: 'Please check the defect rate.', my: 'ချို့ယွင်းချက် ရာခိုင်နှုန်းကို စစ်ဆေးပေးပါ။', zh: '请检查不良率。', th: 'กรุณาตรวจสอบอัตราของเสีย' },
   { cat: 'workplace', en: 'We need more raw materials.', my: 'ကုန်ကြမ်းပစ္စည်းတွေ ထပ်လိုပါတယ်။', zh: '我们需要更多原材料。', th: 'เราต้องการวัตถุดิบเพิ่ม' },
-  { cat: 'workplace', en: 'Please wear safety gear.', my: 'ဘေးကင်းလုံခြုံရေး ဝတ်စုံ ဝတ်ဆင်ပါ။', zh: '请穿戴安全防护装备。', th: 'กรุณาสวมใส่อุปกรณ์ความปลอดภัย' },
-  { cat: 'housing', en: 'Where is my room?', my: 'ကျွန်တော့် အခန်း ဘယ်မှာလဲခင်ဗျာ?', zh: '我的房间在哪里？', th: 'ห้องของฉันอยู่ที่ไหน?' },
-  { cat: 'housing', en: 'The water/electricity is cut off.', my: 'ရေ/မီး ပြတ်နေပါတယ်။', zh: '停水/停电了。', th: 'น้ำ/ไฟดับครับ' },
-  { cat: 'wages', en: 'When will salary be paid?', my: 'လစာ ဘယ်နေ့ ထုတ်ပေးမှာလဲခင်ဗျာ?', zh: '什么时候发工资？', th: 'เงินเดือนจะออกเมื่อไหร่ครับ/ค่ะ?' },
-  { cat: 'wages', en: 'Is overtime pay included?', my: 'OT (အချိန်ပိုကြေး) ပါပြီးသားလားခင်ဗျာ?', zh: '包括加班费吗？', th: 'รวมค่าล่วงเวลา (OT) หรือยัง?' },
+  { cat: 'workplace', en: 'Please wear safety helmet and gloves.', my: 'ဘေးကင်းလုံခြုံရေး ဦးထုပ်နှင့် လက်အိတ် ဝတ်ဆင်ပါ။', zh: '请戴好安全帽和手套。', th: 'กรุณาสวมหมวกนิรภัยและถุงมือ' },
+  { cat: 'workplace', en: 'The production line is stopped.', my: 'ထုတ်လုပ်မှုလိုင်း ရပ်တန့်နေပါတယ်။', zh: '生产线暂停了。', th: 'สายการผลิตหยุดทำงาน' },
+  { cat: 'workplace', en: 'I finished my assigned work.', my: 'ကျွန်တော် တာဝန်ကျအလုပ် ပြီးပါပြီ။', zh: '我完成了分配的工作。', th: 'ฉันทำงานที่ได้รับมอบหมายเสร็จแล้ว' },
+  { cat: 'workplace', en: 'When does the shift end?', my: 'ဒီဂျူတီ ဘယ်အချိန် ပြီးမလဲခင်ဗျာ?', zh: '什么时候下班/换班？', th: 'กะนี้เลิกงานกี่โมงครับ?' },
+  { cat: 'workplace', en: 'Be careful! Watch your hands.', my: 'သတိထားပါ! လက်ကို ဂရုစိုက်ပါ။', zh: '小心！注意手部安全。', th: 'ระวัง! ระวังมือด้วย' },
+  { cat: 'workplace', en: 'Please explain how to operate this.', my: 'ဒါကို ဘယ်လိုမောင်းရမလဲ ရှင်းပြပေးပါ။', zh: '请解释一下如何操作。', th: 'ช่วยอธิบายวิธีใช้งานหน่อยครับ' },
+
+  // 3. Medical & Health
+  { cat: 'medical', en: 'I feel very sick.', my: 'ကျွန်တော်/မ နေမကောင်းဖြစ်နေပါတယ်။', zh: '我感觉很不舒服。', th: 'ฉันรู้สึกไม่สบายมาก' },
+  { cat: 'medical', en: 'Where is the nearest hospital or clinic?', my: 'အနီးဆုံး ဆေးရုံ (သို့) ဆေးခန်း ဘယ်မှာလဲ?', zh: '最近的医院或诊所在哪里？', th: 'โรงพยาบาลหรือคลินิกที่ใกล้ที่สุดอยู่ที่ไหน?' },
+  { cat: 'medical', en: 'I have severe abdominal pain.', my: 'ဗိုက် အရမ်းအောင့်/နာနေပါတယ်။', zh: '我肚子非常疼。', th: 'ฉันปวดท้องมาก' },
+  { cat: 'medical', en: 'I have a high fever and headache.', my: 'အဖျားကြီးပြီး ခေါင်းကိုက်နေပါတယ်။', zh: '我发高烧且头痛。', th: 'ฉันมีไข้สูงและปวดหัว' },
+  { cat: 'medical', en: 'I got injured at work.', my: 'အလုပ်မှာ ထိခိုက်ဒဏ်ရာ ရသွားပါတယ်။', zh: '我在工作中受伤了。', th: 'ฉันได้รับบาดเจ็บจากการทำงาน' },
+  { cat: 'medical', en: 'I need pain relief medicine.', my: 'အကိုက်အခဲပျောက်ဆေး လိုအပ်ပါတယ်။', zh: '我需要止痛药。', th: 'ฉันต้องการยาแก้ปวด' },
+  { cat: 'medical', en: 'I am allergic to this medicine.', my: 'ဒီဆေးနဲ့ ဓာတ်မတည့်ပါဘူး။', zh: '我对这种药过敏。', th: 'ฉันแพ้ยานี้' },
+  { cat: 'medical', en: 'Can I take sick leave today?', my: 'ဒီနေ့ ဆေးခွင့် ယူလို့ရမလားခင်ဗျာ?', zh: '我今天可以请病假吗？', th: 'วันนี้ฉันขอลาป่วยได้ไหมครับ?' },
+
+  // 4. Housing & Accommodation
+  { cat: 'housing', en: 'Where is my dorm room?', my: 'ကျွန်တော့် အဆောင်အခန်း ဘယ်မှာလဲခင်ဗျာ?', zh: '我的宿舍房间在哪里？', th: 'ห้องพักหอพักของฉันอยู่ที่ไหน?' },
+  { cat: 'housing', en: 'The water and electricity are cut off.', my: 'ရေ/မီး ပြတ်နေပါတယ်။', zh: '停水停电了。', th: 'น้ำและไฟดับครับ' },
+  { cat: 'housing', en: 'The air conditioner is broken.', my: 'လေအေးပေးစက် (Aircon) ပျက်နေပါတယ်။', zh: '空调坏了。', th: 'เครื่องปรับอากาศเสีย' },
+  { cat: 'housing', en: 'How much is the monthly room rent?', my: 'တစ်လ အခန်းခ ဘယ်လောက်လဲခင်ဗျာ?', zh: '每月房租是多少？', th: 'ค่าเช่าห้องเดือนละเท่าไหร่ครับ?' },
+  { cat: 'housing', en: 'Where can I do laundry?', my: 'အဝတ် ဘယ်နားမှာ လျှော်လို့ရမလဲ?', zh: '在哪里可以洗衣服？', th: 'ซักผ้าได้ที่ไหนครับ?' },
+
+  // 5. Wages & Overtime
+  { cat: 'wages', en: 'When will the salary be paid?', my: 'လစာ ဘယ်နေ့ ထုတ်ပေးမှာလဲခင်ဗျာ?', zh: '什么时候发工资？', th: 'เงินเดือนจะออกวันไหนครับ?' },
+  { cat: 'wages', en: 'Is overtime (OT) pay calculated correctly?', my: 'အချိန်ပိုကြေး (OT) တွက်ချက်မှု မှန်ကန်ရဲ့လားခင်ဗျာ?', zh: '加班费算得对吗？', th: 'คิดค่าล่วงเวลา (OT) ถูกต้องไหมครับ?' },
+  { cat: 'wages', en: 'Can I work overtime today?', my: 'ဒီနေ့ OT ဆင်းလို့ရမလားခင်ဗျာ?', zh: '我今天可以加班吗？', th: 'วันนี้ฉันขอทำโอทีได้ไหมครับ?' },
+  { cat: 'wages', en: 'Where is the nearest ATM?', my: 'အနီးဆုံး ATM ဘဏ်စက် ဘယ်မှာလဲ?', zh: '最近的ATM提款机在哪里？', th: 'ตู้ ATM ที่ใกล้ที่สุดอยู่ที่ไหน?' },
+  { cat: 'wages', en: 'I want to transfer money home.', my: 'အိမ်ကို ငွေလွှဲချင်လို့ပါ။', zh: '我想往家里汇款。', th: 'ฉันต้องการโอนเงินกลับบ้าน' },
+
+  // 6. Immigration & Visa
   { cat: 'immigration', en: 'Here is my passport and work permit.', my: 'ဒါ ကျွန်တော့် ပတ်စ်ပို့နဲ့ အလုပ်လုပ်ခွင့် ကတ်ပြားပါ။', zh: '这是我的护照和工作许可证。', th: 'นี่คือหนังสือเดินทางและใบอนุญาตทำงานของฉัน' },
-  { cat: 'immigration', en: 'I need to renew my visa.', my: 'ဗီဇာ သက်တမ်းတိုးဖို့ လိုအပ်ပါတယ်။', zh: '我需要续签签证。', th: 'ฉันจำเป็นต้องต่ออายุวีซ่า' }
-];
+  { cat: 'immigration', en: 'I need to renew my visa / contract.', my: 'ဗီဇာ (သို့) စာချုပ် သက်တမ်းတိုးဖို့ လိုအပ်ပါတယ်။', zh: '我需要续签签证/合同。', th: 'ฉันจำเป็นต้องต่ออายุวีซ่า/สัญญาจ้าง' },
+  { cat: 'immigration', en: 'Where is the immigration office?', my: 'လဝက (Immigration) ရုံး ဘယ်မှာလဲခင်ဗျာ?', zh: '移民局在哪里？', th: 'สำนักงานตรวจคนเข้าเมืองอยู่ที่ไหน?' },
+  { cat: 'immigration', en: 'Is this document legal and certified?', my: 'ဒီစာရွက်စာတမ်း တရားဝင် ခိုင်လုံရဲ့လားခင်ဗျာ?', zh: '这份文件合法且经过认证吗？', th: 'เอกสารนี้ถูกต้องตามกฎหมายหรือไม่?' },
 
-const PHRASES = [
-  { en: 'Hello', my: 'မင်္ဂလာပါ', zh: '你好', th: 'สวัสดี', fr: 'Bonjour', es: 'Hola' },
-  { en: 'Thank you', my: 'ကျေးဇူးတင်ပါတယ်', zh: '谢谢', th: 'ขอบคุณ', fr: 'Merci', es: 'Gracias' },
-  { en: 'Yes', my: 'ဟုတ်ကဲ့ / ဟုတ်ပါတယ်', zh: '是的', th: 'ใช่', fr: 'Oui', es: 'Sí' },
-  { en: 'No', my: 'မဟုတ်ပါ / မဟုတ်ဘူး', zh: '不是 / 不', th: 'ไม่ใช่', fr: 'Non', es: 'No' },
-  { en: 'Please', my: 'ကျေးဇူးပြု၍', zh: '请', th: 'กรุณา / โปรด', fr: 'S\'il vous plaît', es: 'Por favor' },
-  { en: 'Sorry / Excuse me', my: 'တောင်းပန်ပါတယ်', zh: '对不起 / 抱歉', th: 'ขอโทษ', fr: 'Pardon', es: 'Disculpe' },
-  { en: 'I understand', my: 'နားလည်ပါပြီ', zh: '我明白了', th: 'เข้าใจแล้ว', fr: 'Je comprends', es: 'Entiendo' },
-  { en: 'I do not understand', my: 'နားမလည်ပါဘူး', zh: '我不明白', th: 'ไม่เข้าใจ', fr: 'Je ne comprends pas', es: 'No entiendo' },
-  { en: 'How much is this?', my: 'ဒါ ဘယ်လောက်လဲ?', zh: '这个多少钱？', th: 'อันนี้ราคาเท่าไหร่?', fr: 'Combien ça coûte ?', es: '¿Cuánto cuesta esto?' },
-  { en: 'Where is the bathroom?', my: 'အိမ်သာ ဘယ်နားမှာလဲ?', zh: '洗手间在哪里？', th: 'ห้องน้ำอยู่ที่ไหน?', fr: 'Où sont les toilettes ?', es: '¿Dónde está el baño?' },
-  { en: 'Goodbye', my: 'သွားပါဦးမယ် / တာ့တာ', zh: '再见', th: 'ลาก่อน', fr: 'Au revoir', es: 'Adiós' }
-];
-
-const WORDS = [
-  { en: 'water', my: 'ရေ', zh: '水', th: 'น้ำ', fr: 'eau', es: 'agua' },
-  { en: 'food', my: 'အစားအစာ', zh: '食物', th: 'อาหาร', fr: 'nourriture', es: 'comida' },
-  { en: 'money', my: 'ပိုက်ဆံ / ငွေ', zh: '钱', th: 'เงิน', fr: 'argent', es: 'dinero' },
-  { en: 'hospital', my: 'ဆေးရုံ', zh: '医院', th: 'โรงพยาบาล', fr: 'hôpital', es: 'hospital' },
-  { en: 'police', my: 'ရဲ', zh: '警察', th: 'ตำรวจ', fr: 'police', es: 'policía' },
-  { en: 'doctor', my: 'ဆရာဝန်', zh: '医生', th: 'หมอ', fr: 'médecin', es: 'médico' },
-  { en: 'medicine', my: 'ဆေး', zh: '药', th: 'ยา', fr: 'médicament', es: 'medicina' },
-  { en: 'room', my: 'အခန်း', zh: '房间', th: 'ห้อง', fr: 'chambre', es: 'habitación' },
-  { en: 'factory', my: 'စက်ရုံ', zh: '工厂', th: 'โรงงาน', fr: 'usine', es: 'fábrica' },
-  { en: 'boss / manager', my: 'သူဌေး / မန်နေဂျာ', zh: '老板 / 经理', th: 'หัวหน้า / ผู้จัดการ', fr: 'patron', es: 'jefe' },
-  { en: 'work', my: 'အလုပ်', zh: '工作', th: 'ทำงาน', fr: 'travail', es: 'trabajo' },
-  { en: 'today', my: 'ဒီနေ့', zh: '今天', th: 'วันนี้', fr: 'aujourd\'hui', es: 'hoy' },
-  { en: 'tomorrow', my: 'မနက်ဖြန်', zh: '明天', th: 'พรุ่งนี้', fr: 'demain', es: 'mañana' }
+  // 7. Daily Essentials
+  { cat: 'basics', en: 'Hello / Greetings', my: 'မင်္ဂလာပါ', zh: '你好', th: 'สวัสดี' },
+  { cat: 'basics', en: 'Thank you very much!', my: 'အများကြီး ကျေးဇူးတင်ပါတယ်!', zh: '非常感谢！', th: 'ขอบคุณมากครับ/ค่ะ!' },
+  { cat: 'basics', en: 'I am sorry / Excuse me', my: 'တောင်းပန်ပါတယ် / ခွင့်လွှတ်ပါ', zh: '对不起 / 抱歉', th: 'ขอโทษครับ/ค่ะ' },
+  { cat: 'basics', en: 'I understand clearly.', my: 'သေချာ နားလည်ပါပြီ။', zh: '我清楚明白了。', th: 'เข้าใจชัดเจนแล้วครับ' },
+  { cat: 'basics', en: 'I do not understand, please repeat slowly.', my: 'နားမလည်ပါဘူး၊ ဖြည်းဖြည်းလေး ထပ်ပြောပေးပါ။', zh: '我不明白，请慢慢重复一遍。', th: 'ไม่เข้าใจครับ กรุณาพูดช้าๆ อีกครั้ง' },
+  { cat: 'basics', en: 'Where is the restroom / toilet?', my: 'အိမ်သာ ဘယ်နားမှာလဲခင်ဗျာ?', zh: '洗手间/厕所在哪里？', th: 'ห้องน้ำอยู่ที่ไหนครับ?' },
+  { cat: 'basics', en: 'How much is this?', my: 'ဒါ ဘယ်လောက်ကျပါသလဲခင်ဗျာ?', zh: '这个多少钱？', th: 'อันนี้ราคาเท่าไหร่ครับ?' },
+  { cat: 'basics', en: 'Goodbye / See you later', my: 'သွားပါဦးမယ် / နောက်မှ တွေ့ကြမယ်', zh: '再见 / 回头见', th: 'ลาก่อน / ไว้เจอกันใหม่' }
 ];

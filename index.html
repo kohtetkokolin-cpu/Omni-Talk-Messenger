@@ -19,7 +19,6 @@
 <!-- Top Navigation Header (WeChat/DingTalk Style) -->
 <header id="wechatTopBar" class="topNavBar">
   <div class="topNavLeft">
-    <button id="homeBtn" class="homeBackBtn" aria-label="Back">‹</button>
     <div class="appBrandBadge">
       <img src="icon.svg" alt="OmniTalk Logo" class="appLogoImg">
       <h1 id="topAppTitle" class="appHeading" data-i18n="appTitle">OmniTalk</h1>
@@ -76,30 +75,41 @@
   <div id="contactsList" class="contactList"></div>
 </main>
 
-<!-- TAB 3: WORKSPACE / TOOLS VIEW (DingTalk / Bento-Grid Style) -->
+<!-- TAB 3: WORKSPACE / TOOLS VIEW (DingTalk / Bento Hub with BIG EYE-CATCHING LOGO ICONS) -->
 <main id="tabContentTools" class="tabContent" style="display:none;">
   <div class="homeGrid">
-    <button class="homeCard heroCard" data-view="conversation">
+    <!-- Card 1: Walkie-Talkie Hero Card -->
+    <button class="homeCard heroCard" data-view="walkie">
+      <div class="cardBigIconWrapper iconWalkie">💬</div>
       <div>
-        <div class="homeCardTitle" data-i18n="cardConversationTitle">💬 Walkie-Talkie Mode</div>
-        <div class="homeCardDesc" data-i18n="cardConversationDesc">Two-person split screen with rotated panel for physical face-to-face meetings</div>
+        <div class="homeCardTitle" data-i18n="cardConversationTitle">Walkie-Talkie မျက်နှာချင်းဆိုင် စကားပြောခြင်း</div>
+        <div class="homeCardDesc" data-i18n="cardConversationDesc">၂ ယောက် မျက်နှာချင်းဆိုင် အပေါ်အောက် panel လှည့်၍ စကားပြန်ဆိုစနစ်</div>
       </div>
-      <div class="homeCardBadge">LIVE SPLIT SCREEN</div>
+      <div class="homeCardBadge">LIVE SPLIT SCREEN • နှိပ်ပါ</div>
     </button>
 
+    <!-- Card 2: Quick Translate & OCR -->
     <button class="homeCard" data-view="quick">
-      <div class="homeCardTitle" data-i18n="cardQuickTitle">🔍 Quick Translate</div>
-      <div class="homeCardDesc" data-i18n="cardQuickDesc">Translate text, voice, or camera scan instantly</div>
+      <div class="cardBigIconWrapper iconQuick">🔍</div>
+      <div class="homeCardTitle" data-i18n="cardQuickTitle">အမြန်ဘာသာပြန် &amp; OCR</div>
+      <div class="homeCardDesc" data-i18n="cardQuickDesc">စာသား၊ အသံ သို့မဟုတ် ဓာတ်ပုံ scan ဖတ်ရန်</div>
     </button>
 
+    <!-- Card 3: Gemini Live Interpreter -->
     <button class="homeCard" data-view="live">
-      <div class="homeCardTitle" data-i18n="cardLiveTitle">⚡ Live Interpreter</div>
-      <div class="homeCardDesc" data-i18n="cardLiveDesc">Continuous hands-free real-time simultaneous interpretation</div>
+      <div class="cardBigIconWrapper iconLive">⚡</div>
+      <div class="homeCardTitle" data-i18n="cardLiveTitle">တိုက်ရိုက် စကားပြန်စနစ်</div>
+      <div class="homeCardDesc" data-i18n="cardLiveDesc">ခလုတ်နှိပ်စရာမလိုဘဲ တိုက်ရိုက် စကားပြန်ပေးမှု</div>
     </button>
 
-    <button class="homeCard heroCard" data-view="phrasebook" style="grid-column: span 2;">
-      <div class="homeCardTitle" data-i18n="cardPhrasebookTitle">📋 Survival &amp; Work Phrasebook</div>
-      <div class="homeCardDesc" data-i18n="cardPhrasebookDesc">120+ verified audio phrases across work, medical, emergency, and immigration</div>
+    <!-- Card 4: 120+ Phrasebook Hero Card -->
+    <button class="homeCard heroCard" data-view="phrasebook">
+      <div class="cardBigIconWrapper iconPhrasebook">📋</div>
+      <div>
+        <div class="homeCardTitle" data-i18n="cardPhrasebookTitle">အရေးပေါ်နှင့် လုပ်ငန်းခွင် စကားစုများ</div>
+        <div class="homeCardDesc" data-i18n="cardPhrasebookDesc">လုပ်ငန်းခွင်၊ ဆေးရုံ၊ အရေးပေါ်၊ ဗီဇာသုံး အသံထွက်ပါ စကားစု ၁၂၀ ကျော်</div>
+      </div>
+      <div class="homeCardBadge" style="background:rgba(139,92,246,0.2); border-color:rgba(139,92,246,0.4); color:#C084FC;">120+ PHRASES • နှိပ်ပါ</div>
     </button>
   </div>
 </main>
@@ -152,6 +162,152 @@
     <div class="fieldHint">Real-time cross-device chats powered by Firebase &amp; Gemini AI.</div>
   </div>
 </main>
+
+<!-- ========================================================= -->
+<!-- SUB-VIEW 1: WALKIE-TALKIE SPLIT SCREEN MODE               -->
+<!-- ========================================================= -->
+<section id="viewWalkieTalkie" style="display:none; flex-direction:column; height:100vh; background:var(--bg); z-index:120; position:fixed; top:0; left:0; right:0; bottom:0;">
+  <div class="toolSubHeader">
+    <button class="toolBackBtn" onclick="closeWorkspaceTool()">‹ ပြန်ထွက်မည်</button>
+    <div class="toolSubTitle">💬 Walkie-Talkie မျက်နှာချင်းဆိုင်</div>
+  </div>
+  <div class="walkieSplitContainer">
+    <!-- Top Inverted Panel (Person Opposite You) -->
+    <div class="walkiePanel inverted" id="walkiePanelTop">
+      <div class="walkieLangRow">
+        <select id="walkieLangA" class="walkieLangSelect"></select>
+        <span style="font-size:12px; color:var(--accent-cyan); font-weight:700;">👤 Speaker A (အပေါ်)</span>
+      </div>
+      <div class="walkieSpeechBox" id="walkieSpeechA">
+        <span style="color:var(--text-dim);">နှိပ်ပြီး စကားပြောပါ သို့မဟုတ် စာရိုက်ပါ...</span>
+      </div>
+      <div class="walkieControlsRow">
+        <button id="walkieMicA" class="walkieMicBtn">🎙️</button>
+      </div>
+    </div>
+
+    <!-- Center Divider Bar -->
+    <div class="walkieCenterDivider">
+      <button class="walkieSwapBtn" id="walkieSwapLangsBtn">⇄ ဘာသာစကား လဲလှယ်မည်</button>
+      <button class="walkieSwapBtn" id="walkieAutoSpeakToggle" style="color:#34D399;">🔊 အသံဖွင့်: ဖွင့်ထားသည်</button>
+    </div>
+
+    <!-- Bottom Normal Panel (You) -->
+    <div class="walkiePanel" id="walkiePanelBottom">
+      <div class="walkieLangRow">
+        <select id="walkieLangB" class="walkieLangSelect"></select>
+        <span style="font-size:12px; color:var(--primary); font-weight:700;">👤 Speaker B (မိမိ)</span>
+      </div>
+      <div class="walkieSpeechBox" id="walkieSpeechB">
+        <span style="color:var(--text-dim);">နှိပ်ပြီး စကားပြောပါ သို့မဟုတ် စာရိုက်ပါ...</span>
+      </div>
+      <div class="walkieControlsRow">
+        <button id="walkieMicB" class="walkieMicBtn">🎙️</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================================= -->
+<!-- SUB-VIEW 2: QUICK TRANSLATE & OCR SCAN                     -->
+<!-- ========================================================= -->
+<section id="viewQuickTranslate" style="display:none; flex-direction:column; height:100vh; background:var(--bg); z-index:120; position:fixed; top:0; left:0; right:0; bottom:0;">
+  <div class="toolSubHeader">
+    <button class="toolBackBtn" onclick="closeWorkspaceTool()">‹ ပြန်ထွက်မည်</button>
+    <div class="toolSubTitle">🔍 အမြန်ဘာသာပြန်နှင့် ဓာတ်ပုံ Scan</div>
+  </div>
+  <div class="qtContainer">
+    <!-- Lang Selector -->
+    <div class="qtLangSelectorCard">
+      <select id="qtSourceLang" class="qtLangSelect"></select>
+      <button id="qtSwapBtn" class="qtSwapBtn">⇄</button>
+      <select id="qtTargetLang" class="qtLangSelect"></select>
+    </div>
+
+    <!-- Input Card -->
+    <div class="qtInputCard">
+      <textarea id="qtInputText" class="qtTextarea" placeholder="စာသား ရိုက်ထည့်ပါ သို့မဟုတ် ကူးထည့် (Paste) ပါ..."></textarea>
+      <div class="qtToolActionsRow">
+        <div class="qtActionBtnsLeft">
+          <button id="qtMicBtn" class="qtActionIconBtn" title="Speak">🎙️ အသံ</button>
+          <button id="qtCameraBtn" class="qtActionIconBtn" title="Scan photo">📷 ဓာတ်ပုံ Scan</button>
+          <input type="file" id="qtCameraFileInput" accept="image/*" style="display:none;">
+          <button id="qtClearBtn" class="qtActionIconBtn" title="Clear">✕ ဖျက်</button>
+        </div>
+        <button id="qtTranslateActionBtn" class="qtTranslateBtn">ဘာသာပြန်မည် ➤</button>
+      </div>
+    </div>
+
+    <!-- Result Card -->
+    <div id="qtResultCard" class="qtResultCard">
+      <div style="font-size:12px; color:#38BDF8; font-weight:700; margin-bottom:6px;">🌐 ဘာသာပြန် ရလဒ် -</div>
+      <div id="qtResultText" class="qtResultText"></div>
+      <div class="qtResultActions">
+        <button id="qtSpeakResultBtn" class="qtActionIconBtn">🔊 အသံနားထောင်မည်</button>
+        <button id="qtCopyResultBtn" class="qtActionIconBtn">📋 Copy</button>
+      </div>
+    </div>
+
+    <!-- History -->
+    <div class="sectionTitle">မကြာသေးမီက ဘာသာပြန်ချက်များ</div>
+    <div id="qtHistoryList" class="chatList"></div>
+  </div>
+</section>
+
+<!-- ========================================================= -->
+<!-- SUB-VIEW 3: GEMINI LIVE SIMULTANEOUS INTERPRETER           -->
+<!-- ========================================================= -->
+<section id="viewLiveInterpreter" style="display:none; flex-direction:column; height:100vh; background:var(--bg); z-index:120; position:fixed; top:0; left:0; right:0; bottom:0;">
+  <div class="toolSubHeader">
+    <button class="toolBackBtn" onclick="closeWorkspaceTool()">‹ ပြန်ထွက်မည်</button>
+    <div class="toolSubTitle">⚡ Gemini Live တိုက်ရိုက် စကားပြန်</div>
+  </div>
+  <div class="liveContainer">
+    <div class="qtLangSelectorCard" style="width:100%;">
+      <select id="liveLangA" class="qtLangSelect"></select>
+      <span style="font-size:18px; color:var(--accent-amber);">⇄</span>
+      <select id="liveLangB" class="qtLangSelect"></select>
+    </div>
+
+    <div id="liveVisualizerNode" class="liveVisualizerBox">⚡</div>
+    <div id="liveStatusLabel" class="liveStatusText">အသင့်ဖြစ်ပါပြီ (နှိပ်ပြီး စကားစပြောပါ)</div>
+
+    <div class="liveTranscriptFeed" id="liveTranscriptStream">
+      <div style="text-align:center; color:var(--text-dim); padding:20px;">
+        ခလုတ် ထပ်မံနှိပ်စရာမလိုဘဲ နှစ်ဖက်စကားပြောဆိုမှုများကို အလိုအလျောက် တိုက်ရိုက်စကားပြန်ဆိုပေးပါမည်။
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================================= -->
+<!-- SUB-VIEW 4: 120+ SURVIVAL & WORK PHRASEBOOK                -->
+<!-- ========================================================= -->
+<section id="viewPhrasebook" style="display:none; flex-direction:column; height:100vh; background:var(--bg); z-index:120; position:fixed; top:0; left:0; right:0; bottom:0;">
+  <div class="toolSubHeader">
+    <button class="toolBackBtn" onclick="closeWorkspaceTool()">‹ ပြန်ထွက်မည်</button>
+    <div class="toolSubTitle">📋 ၁၂၀+ အရေးပေါ်နှင့် လုပ်ငန်းခွင် စကားစုများ</div>
+  </div>
+  <div class="phrasebookContainer">
+    <!-- Category Filter Pills -->
+    <div class="categoryPillsRow">
+      <button class="categoryPill active" data-cat="all">အားလုံး (All)</button>
+      <button class="categoryPill" data-cat="workplace">🏭 လုပ်ငန်းခွင် (Work)</button>
+      <button class="categoryPill" data-cat="emergency">🚨 အရေးပေါ် (Emergency)</button>
+      <button class="categoryPill" data-cat="medical">🏥 ဆေးရုံ (Medical)</button>
+      <button class="categoryPill" data-cat="housing">🏠 နေထိုင်ရေး (Housing)</button>
+      <button class="categoryPill" data-cat="wages">💰 လစာ/OT (Wages)</button>
+      <button class="categoryPill" data-cat="immigration">🛂 ဗီဇာ/လဝက (Visa)</button>
+      <button class="categoryPill" data-cat="basics">💬 နေ့စဉ်သုံး (Basics)</button>
+    </div>
+
+    <!-- Search Input -->
+    <input type="text" id="phraseSearchBox" class="phraseSearchInput" placeholder="စကားစုများ ရှာဖွေရန် (Search phrases in MM, EN, ZH, TH)...">
+
+    <!-- Phrase Cards List -->
+    <div id="phrasebookList" class="phraseListWrap"></div>
+  </div>
+</section>
 
 <!-- ACTIVE CHAT ROOM (WeChat / DingTalk Multi-lingual Room) -->
 <section id="chatRoomView" class="chatRoomOverlay" style="display:none;">
@@ -206,32 +362,6 @@
       <button class="btnGhost modalCancelBtn" data-i18n="btnCancel">Cancel</button>
       <button id="confirmCreateGroupBtn" class="btnPrimary" data-i18n="btnCreate">Create Group</button>
     </div>
-  </div>
-</div>
-
-<!-- WORKSPACE PANELS (Walkie-Talkie Split Panels, Quick, Live) -->
-<div id="panelA" class="panel" style="display:none;"></div>
-<div id="divider" style="display:none;">
-  <div id="dividerBadge"><span>OmniTalk Channel</span></div>
-</div>
-<div id="panelB" class="panel" style="display:none;"></div>
-
-<div id="quickPanel" style="display:none;">
-  <div class="qtHeader">
-    <label>Translate into</label>
-    <select id="qtTargetLang" class="qtLangSelect"></select>
-  </div>
-  <div id="qtHistory"><div class="qtEmpty">Type, speak, or scan a document to translate instantly.</div></div>
-  <div class="qtInputDock">
-    <textarea id="qtInput" rows="1" placeholder="Type text to translate..."></textarea>
-    <button id="qtSendBtn" class="sendBtn">➤</button>
-  </div>
-</div>
-
-<div id="livePanel" style="display:none;">
-  <div id="liveTranscript"><div class="qtEmpty">⚡ Live Simultaneous Interpreter ready. Start speaking.</div></div>
-  <div class="liveControlDock">
-    <button id="liveStartBtn" class="liveBigCircle">⚡</button>
   </div>
 </div>
 
