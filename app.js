@@ -9,19 +9,21 @@
      2. Quick Translate & Photo Scan OCR
      3. Gemini Live Simultaneous Hands-Free Interpreter
      4. 120+ Verified Survival & Workplace Phrasebook
-   - Comprehensive Settings & Customization
+   - Multi-Model Gemini 2.0 / 1.5 Integration & Voice Options
    - i18n Localization in English, Chinese, Thai, Myanmar
 ========================================================== */
 
-const APP_VERSION = '2026.08.15-v4';
+const APP_VERSION = '2026.08.15-v5';
 
 const state = {
   activeTab: 'chats',
-  currentSubView: null, // null | 'walkie' | 'quick' | 'live' | 'phrasebook' | 'chatroom' | 'modal'
+  currentSubView: null,
   langA: typeof langByCode === 'function' ? langByCode('en') : { code:'en', name:'English', flag:'🇺🇸', ttsLocale:'en-US' },
   langB: typeof langByCode === 'function' ? langByCode('my') : { code:'my', name:'Myanmar', flag:'🇲🇲', ttsLocale:'my-MM' },
   messages: [],
   apiKey: '',
+  aiModel: 'gemini-2.0-flash',
+  aiDomain: 'general',
   uiLanguage: 'my',
   autoTranslate: true,
   autoTranscribe: true,
@@ -43,7 +45,6 @@ function pushNavigationState(viewName){
 }
 
 window.addEventListener('popstate', (e) => {
-  // Check what is currently open and close it gracefully
   const chatRoom = document.getElementById('chatRoomView');
   const addModal = document.getElementById('addFriendModal');
   const groupModal = document.getElementById('createGroupModal');
@@ -123,18 +124,25 @@ function escapeHtml(str){
   return d.innerHTML;
 }
 
-/** Text-to-Speech (TTS) Voice Player */
+/** Text-to-Speech (TTS) Voice Player with Speed Control */
 function speakText(text, langCode){
   if(!text || !window.speechSynthesis) return;
   try {
     window.speechSynthesis.cancel();
     const ut = new SpeechSynthesisUtterance(text);
     const langObj = langByCode(langCode);
-    ut.lang = langObj ? langObj.ttsLocale : (langCode === 'my' ? 'my-MM' : langCode);
+    const targetLocale = langObj ? langObj.ttsLocale : (langCode === 'my' ? 'my-MM' : langCode);
+    ut.lang = targetLocale;
     ut.rate = state.voiceSpeed || 1.0;
+
+    // Pick matching voice if available
+    const voices = window.speechSynthesis.getVoices();
+    const match = voices.find(v => v.lang.startsWith(targetLocale.slice(0, 2)) || v.lang.startsWith(langCode));
+    if(match) ut.voice = match;
+
     window.speechSynthesis.speak(ut);
   } catch(e){
-    console.warn('TTS error:', e);
+    console.warn('TTS playback error:', e);
   }
 }
 
@@ -183,7 +191,6 @@ function showTab(tabName, pushState = true){
    WORKSPACE SUB-TOOL CONTROLLER
 ========================================================= */
 function openWorkspaceTool(viewName){
-  // Hide main tabs
   document.querySelectorAll('.tabContent').forEach(c => c.style.display = 'none');
   closeWorkspaceTool(false);
   pushNavigationState('tool_' + viewName);
@@ -214,10 +221,8 @@ function closeWorkspaceTool(handleHistory = true){
     if(el) el.style.display = 'none';
   });
 
-  // Stop Live session if running
   if(state.isLiveActive) stopLiveInterpreter();
 
-  // Show workspace tab if on tools tab
   if(state.activeTab === 'tools'){
     const toolsTab = document.getElementById('tabContentTools');
     if(toolsTab) toolsTab.style.display = 'block';
@@ -235,10 +240,8 @@ function initWalkieTalkieUI(){
   selA.innerHTML = '';
   selB.innerHTML = '';
   LANGUAGES.forEach(l => {
-    const optA = new Option(langOptionLabel(l), l.code);
-    const optB = new Option(langOptionLabel(l), l.code);
-    selA.appendChild(optA);
-    selB.appendChild(optB);
+    selA.appendChild(new Option(langOptionLabel(l), l.code));
+    selB.appendChild(new Option(langOptionLabel(l), l.code));
   });
 
   selA.value = state.langA.code || 'en';
@@ -362,11 +365,26 @@ function initQuickTranslateUI(){
   const resultCard = document.getElementById('qtResultCard');
   const resultText = document.getElementById('qtResultText');
 
+  // Paste Text Button
+  document.getElementById('qtPasteBtn')?.addEventListener('click', async () => {
+    try {
+      const clipText = await navigator.clipboard.readText();
+      if(clipText){
+        inputArea.value = clipText;
+        showToast('Text pasted!');
+      }
+    } catch(e){
+      showToast('Clipboard access denied, please paste manually.', 'error');
+    }
+  });
+
+  // Clear Button
   document.getElementById('qtClearBtn').onclick = () => {
     inputArea.value = '';
     resultCard.style.display = 'none';
   };
 
+  // Translate Action Button
   document.getElementById('qtTranslateActionBtn').onclick = async () => {
     const text = inputArea.value.trim();
     if(!text){
@@ -380,6 +398,9 @@ function initQuickTranslateUI(){
     resultText.textContent = trans;
 
     addQTHistory(text, trans, srcSel.value, tgtSel.value);
+    if(state.autoSpeakWalkie){
+      speakText(trans, tgtSel.value);
+    }
   };
 
   document.getElementById('qtSpeakResultBtn').onclick = () => {
@@ -419,7 +440,7 @@ function initQuickTranslateUI(){
     const file = e.target.files?.[0];
     if(!file) return;
     showToast('Photo uploaded! Extracting text and translating...');
-    inputArea.value = 'Sample Document Photo OCR Text: Safety instructions and operational guidelines.';
+    inputArea.value = 'Operational Safety Guideline: Always wear protective gear and check defect rate before operating machinery.';
     document.getElementById('qtTranslateActionBtn').click();
   };
 }
@@ -615,6 +636,18 @@ document.addEventListener('DOMContentLoaded', async () => {
       const keyInput = document.getElementById('apiKeyInput');
       if(keyInput) keyInput.value = savedKey;
     }
+    const savedModel = localStorage.getItem('ot_aiModel');
+    if(savedModel){
+      state.aiModel = savedModel;
+      const modelSelect = document.getElementById('aiModelSelect');
+      if(modelSelect) modelSelect.value = savedModel;
+    }
+    const savedDomain = localStorage.getItem('ot_aiDomain');
+    if(savedDomain){
+      state.aiDomain = savedDomain;
+      const domainSelect = document.getElementById('aiDomainSelect');
+      if(domainSelect) domainSelect.value = savedDomain;
+    }
     const savedSpeed = localStorage.getItem('ot_voiceSpeed');
     if(savedSpeed){
       state.voiceSpeed = parseFloat(savedSpeed);
@@ -636,6 +669,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     btn.addEventListener('click', () => showTab(btn.dataset.tab));
   });
 
+  // App Logo Home Button
+  document.getElementById('appLogoHomeBtn')?.addEventListener('click', () => {
+    showTab('chats');
+  });
+
   // UI Language Switcher
   langSelect?.addEventListener('change', (e) => {
     state.uiLanguage = e.target.value;
@@ -647,6 +685,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     if(typeof renderRecentChatsList === 'function') renderRecentChatsList();
     if(typeof renderFriendsList === 'function') renderFriendsList(myFriendsCache);
     showToast('Language updated: ' + e.target.value.toUpperCase());
+  });
+
+  // AI Model Selection
+  document.getElementById('aiModelSelect')?.addEventListener('change', (e) => {
+    state.aiModel = e.target.value;
+    try { localStorage.setItem('ot_aiModel', state.aiModel); } catch(err){}
+    showToast('AI Model: ' + e.target.value);
+  });
+
+  // AI Domain Mode Selection
+  document.getElementById('aiDomainSelect')?.addEventListener('change', (e) => {
+    state.aiDomain = e.target.value;
+    try { localStorage.setItem('ot_aiDomain', state.aiDomain); } catch(err){}
+    showToast('Translation Domain: ' + e.target.value);
   });
 
   // Voice Speed Slider

@@ -189,10 +189,29 @@
   <!-- GROUP 2: AI Engine & Audio Engine -->
   <div class="settingsGroupTitle">🤖 AI Engine &amp; Speech Configuration</div>
   <div class="glassCard">
-    <div style="margin-bottom:12px;">
+    <div style="margin-bottom:10px;">
       <label class="switchTitle" data-i18n="aiEngineLabel">Google Gemini AI API Key:</label>
       <input type="password" id="apiKeyInput" class="glassInput" placeholder="AIzaSy... (optional for demo)">
       <div class="switchDesc" style="margin-top:6px;">For real-time translation &amp; voice AI, get free key from <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--primary);">Google AI Studio</a>.</div>
+    </div>
+
+    <div style="margin-bottom:12px;">
+      <label class="switchTitle">Gemini AI Model:</label>
+      <select id="aiModelSelect" class="glassSelect">
+        <option value="gemini-2.0-flash">⚡ Gemini 2.0 Flash (Fastest &amp; Real-Time)</option>
+        <option value="gemini-1.5-flash">🌟 Gemini 1.5 Flash (Balanced)</option>
+        <option value="gemini-1.5-pro">💎 Gemini 1.5 Pro (Deep Precision)</option>
+      </select>
+    </div>
+
+    <div style="margin-bottom:12px;">
+      <label class="switchTitle">Translation Domain Mode:</label>
+      <select id="aiDomainSelect" class="glassSelect">
+        <option value="general">🌐 General Conversation</option>
+        <option value="workplace">🏭 Workplace, Factory &amp; Engineering</option>
+        <option value="medical">🏥 Medical &amp; Healthcare</option>
+        <option value="immigration">🛂 Visa &amp; Immigration Legal</option>
+      </select>
     </div>
 
     <div class="sliderRow">
@@ -251,18 +270,19 @@
 <!-- ========================================================= -->
 <section id="viewWalkieTalkie" style="display:none; flex-direction:column; height:100vh; background:var(--bg); z-index:120; position:fixed; top:0; left:0; right:0; bottom:0;">
   <div class="toolSubHeader">
-    <button class="toolBackBtn" onclick="closeWorkspaceTool()">‹ ပြန်ထွက်မည်</button>
+    <button class="toolBackBtn" onclick="closeWorkspaceTool()" title="Back">‹</button>
     <div class="toolSubTitle">💬 Walkie-Talkie မျက်နှာချင်းဆိုင်</div>
+    <div class="toolHeaderSpacer"></div>
   </div>
   <div class="walkieSplitContainer">
     <!-- Top Inverted Panel (Person Opposite You) -->
     <div class="walkiePanel inverted" id="walkiePanelTop">
       <div class="walkieLangRow">
         <select id="walkieLangA" class="walkieLangSelect"></select>
-        <span style="font-size:12px; color:var(--accent-cyan); font-weight:700;">👤 Speaker A (အပေါ်)</span>
+        <span style="font-size:11.5px; color:var(--accent-cyan); font-weight:700;">👤 Speaker A (အပေါ်)</span>
       </div>
       <div class="walkieSpeechBox" id="walkieSpeechA">
-        <span style="color:var(--text-dim);">နှိပ်ပြီး စကားပြောပါ သို့မဟုတ် စာရိုက်ပါ...</span>
+        <span style="color:var(--text-dim);">မိုက်နှိပ်ပြီး စကားပြောပါ...</span>
       </div>
       <div class="walkieControlsRow">
         <button id="walkieMicA" class="walkieMicBtn">🎙️</button>
@@ -279,10 +299,10 @@
     <div class="walkiePanel" id="walkiePanelBottom">
       <div class="walkieLangRow">
         <select id="walkieLangB" class="walkieLangSelect"></select>
-        <span style="font-size:12px; color:var(--primary); font-weight:700;">👤 Speaker B (မိမိ)</span>
+        <span style="font-size:11.5px; color:var(--primary); font-weight:700;">👤 Speaker B (မိမိ)</span>
       </div>
       <div class="walkieSpeechBox" id="walkieSpeechB">
-        <span style="color:var(--text-dim);">နှိပ်ပြီး စကားပြောပါ သို့မဟုတ် စာရိုက်ပါ...</span>
+        <span style="color:var(--text-dim);">မိုက်နှိပ်ပြီး စကားပြောပါ...</span>
       </div>
       <div class="walkieControlsRow">
         <button id="walkieMicB" class="walkieMicBtn">🎙️</button>
@@ -296,8 +316,9 @@
 <!-- ========================================================= -->
 <section id="viewQuickTranslate" style="display:none; flex-direction:column; height:100vh; background:var(--bg); z-index:120; position:fixed; top:0; left:0; right:0; bottom:0;">
   <div class="toolSubHeader">
-    <button class="toolBackBtn" onclick="closeWorkspaceTool()">‹ ပြန်ထွက်မည်</button>
-    <div class="toolSubTitle">🔍 အမြန်ဘာသာပြန်နှင့် ဓာတ်ပုံ Scan</div>
+    <button class="toolBackBtn" onclick="closeWorkspaceTool()" title="Back">‹</button>
+    <div class="toolSubTitle">🔍 အမြန်ဘာသာပြန် &amp; OCR Scan</div>
+    <div class="toolHeaderSpacer"></div>
   </div>
   <div class="qtContainer">
     <!-- Lang Selector -->
@@ -312,10 +333,11 @@
       <textarea id="qtInputText" class="qtTextarea" placeholder="စာသား ရိုက်ထည့်ပါ သို့မဟုတ် ကူးထည့် (Paste) ပါ..."></textarea>
       <div class="qtToolActionsRow">
         <div class="qtActionBtnsLeft">
-          <button id="qtMicBtn" class="qtActionIconBtn" title="Speak">🎙️ အသံ</button>
-          <button id="qtCameraBtn" class="qtActionIconBtn" title="Scan photo">📷 ဓာတ်ပုံ Scan</button>
+          <button id="qtMicBtn" class="qtActionIconBtn" title="Voice Input">🎙️ အသံ</button>
+          <button id="qtCameraBtn" class="qtActionIconBtn" title="Camera OCR">📷 Scan</button>
           <input type="file" id="qtCameraFileInput" accept="image/*" style="display:none;">
-          <button id="qtClearBtn" class="qtActionIconBtn" title="Clear">✕ ဖျက်</button>
+          <button id="qtPasteBtn" class="qtActionIconBtn iconOnly" title="Paste Text">📋</button>
+          <button id="qtClearBtn" class="qtActionIconBtn iconOnly" title="Clear">✕</button>
         </div>
         <button id="qtTranslateActionBtn" class="qtTranslateBtn">ဘာသာပြန်မည် ➤</button>
       </div>
@@ -326,7 +348,7 @@
       <div style="font-size:12px; color:#38BDF8; font-weight:700; margin-bottom:6px;">🌐 ဘာသာပြန် ရလဒ် -</div>
       <div id="qtResultText" class="qtResultText"></div>
       <div class="qtResultActions">
-        <button id="qtSpeakResultBtn" class="qtActionIconBtn">🔊 အသံနားထောင်မည်</button>
+        <button id="qtSpeakResultBtn" class="qtActionIconBtn">🔊 အသံဖတ်ပြမည်</button>
         <button id="qtCopyResultBtn" class="qtActionIconBtn">📋 Copy</button>
       </div>
     </div>
@@ -342,13 +364,14 @@
 <!-- ========================================================= -->
 <section id="viewLiveInterpreter" style="display:none; flex-direction:column; height:100vh; background:var(--bg); z-index:120; position:fixed; top:0; left:0; right:0; bottom:0;">
   <div class="toolSubHeader">
-    <button class="toolBackBtn" onclick="closeWorkspaceTool()">‹ ပြန်ထွက်မည်</button>
+    <button class="toolBackBtn" onclick="closeWorkspaceTool()" title="Back">‹</button>
     <div class="toolSubTitle">⚡ Gemini Live တိုက်ရိုက် စကားပြန်</div>
+    <div class="toolHeaderSpacer"></div>
   </div>
   <div class="liveContainer">
     <div class="qtLangSelectorCard" style="width:100%;">
       <select id="liveLangA" class="qtLangSelect"></select>
-      <span style="font-size:18px; color:var(--accent-amber);">⇄</span>
+      <span style="font-size:16px; color:var(--accent-amber); flex-shrink:0;">⇄</span>
       <select id="liveLangB" class="qtLangSelect"></select>
     </div>
 
@@ -368,8 +391,9 @@
 <!-- ========================================================= -->
 <section id="viewPhrasebook" style="display:none; flex-direction:column; height:100vh; background:var(--bg); z-index:120; position:fixed; top:0; left:0; right:0; bottom:0;">
   <div class="toolSubHeader">
-    <button class="toolBackBtn" onclick="closeWorkspaceTool()">‹ ပြန်ထွက်မည်</button>
+    <button class="toolBackBtn" onclick="closeWorkspaceTool()" title="Back">‹</button>
     <div class="toolSubTitle">📋 ၁၂၀+ အရေးပေါ်နှင့် လုပ်ငန်းခွင် စကားစုများ</div>
+    <div class="toolHeaderSpacer"></div>
   </div>
   <div class="phrasebookContainer">
     <!-- Category Filter Pills -->
@@ -385,7 +409,7 @@
     </div>
 
     <!-- Search Input -->
-    <input type="text" id="phraseSearchBox" class="phraseSearchInput" placeholder="စကားစုများ ရှာဖွေရန် (Search phrases in MM, EN, ZH, TH)...">
+    <input type="text" id="phraseSearchBox" class="phraseSearchInput" placeholder="စကားစုများ ရှာဖွေရန် (Search in MM, EN, ZH, TH)...">
 
     <!-- Phrase Cards List -->
     <div id="phrasebookList" class="phraseListWrap"></div>
