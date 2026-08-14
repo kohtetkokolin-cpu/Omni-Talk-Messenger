@@ -1,19 +1,18 @@
 /* ==========================================================
-   OmniTalk PRO v8.0 — app.js
+   OmniTalk PRO v9.0 — app.js
    Application Controller & Workspace Tools Manager
    Features:
    - WeChat & DingTalk Navigation with Hardware Back Button Support
    - Real-time Multi-Language Chat & Voice Transcribe
    - Workspace Glass Hub:
      1. Walkie-Talkie Face-to-Face PTT with GBoard-style Live Streaming
-     2. Quick Translate & Photo Scan OCR with Gemini AI
+     2. Quick Translate & Photo Scan OCR with Gemini AI & Neural Fallback
      3. Gemini Live Bilateral Simultaneous Voice-to-Voice Interpreter
      4. 120+ Verified Survival & Workplace Phrasebook
-   - Multi-Model Gemini 2.5 / 2.0 / 1.5 Engine & Natural Multi-Language TTS
-   - Prominent Versioning & Network-First Caching
+   - Mobile AudioContext Unlocking & Strict Auto-Speak Mute Control
 ========================================================== */
 
-const APP_VERSION = 'v8.0.0 (Build 2026.08.15)';
+const APP_VERSION = 'v9.0.0 (Build 2026.08.15)';
 
 const state = {
   activeTab: 'chats',
@@ -22,7 +21,7 @@ const state = {
   langB: typeof langByCode === 'function' ? langByCode('my') : { code:'my', name:'Myanmar', flag:'🇲🇲', ttsLocale:'my-MM' },
   messages: [],
   apiKey: '',
-  aiModel: 'gemini-2.0-flash',
+  aiModel: 'gemini-2.5-flash',
   aiDomain: 'general',
   uiLanguage: 'my',
   autoTranslate: true,
@@ -128,11 +127,21 @@ function escapeHtml(str){
   return d.innerHTML;
 }
 
+/** Mobile Browser AudioContext & Speech Priming */
+function primeAudioOnUserGesture(){
+  if(window.speechSynthesis){
+    try {
+      window.speechSynthesis.resume();
+    } catch(e){}
+  }
+}
+
 /** Text-to-Speech (TTS) Voice Player with Multi-Language Support */
 function speakText(text, langCode){
   if(!text || !window.speechSynthesis) return;
   try {
     window.speechSynthesis.cancel();
+    window.speechSynthesis.resume();
     const ut = new SpeechSynthesisUtterance(text);
     const langObj = langByCode(langCode);
     const targetLocale = langObj ? langObj.ttsLocale : (langCode === 'my' ? 'my-MM' : langCode);
@@ -176,6 +185,7 @@ function applyUILanguage(){
    TAB NAVIGATION (WeChat/DingTalk Style)
 ========================================================= */
 function showTab(tabName, pushState = true){
+  primeAudioOnUserGesture();
   state.activeTab = tabName;
   closeWorkspaceTool(false);
 
@@ -196,6 +206,7 @@ function showTab(tabName, pushState = true){
    WORKSPACE SUB-TOOL CONTROLLER
 ========================================================= */
 function openWorkspaceTool(viewName){
+  primeAudioOnUserGesture();
   document.querySelectorAll('.tabContent').forEach(c => c.style.display = 'none');
   closeWorkspaceTool(false);
   pushNavigationState('tool_' + viewName);
@@ -282,7 +293,7 @@ function initWalkieTalkieUI(){
   setupWalkiePTTMic('walkieMicB', 'walkieSpeechB', () => state.langB.code, () => state.langA.code, 'walkieSpeechA');
 }
 
-/** Push-to-Talk (PTT) with Real-Time GBoard-Style Streaming & Noise Suppression */
+/** Push-to-Talk (PTT) with Real-Time GBoard-Style Streaming */
 function setupWalkiePTTMic(btnId, myBoxId, getSrcLang, getTgtLang, otherBoxId){
   const btn = document.getElementById(btnId);
   const myBox = document.getElementById(myBoxId);
@@ -297,20 +308,12 @@ function setupWalkiePTTMic(btnId, myBoxId, getSrcLang, getTgtLang, otherBoxId){
     if(e) e.preventDefault();
     if(isRecording) return;
     isRecording = true;
+    primeAudioOnUserGesture();
     vibrate(18);
 
     btn.classList.add('active');
     accumulatedFinal = '';
-    myBox.innerHTML = '<span style="color:#FBBF24;">🎙️ စကားပြောပါ (Live Voice-to-Text)...</span>';
-
-    // Noise suppression media constraints
-    try {
-      if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
-        navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
-        }).catch(()=>{});
-      }
-    } catch(err){}
+    myBox.innerHTML = '<span style="color:#FBBF24;">🎙️ စကားပြောပါ (Listening Live)...</span>';
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if(!SpeechRecognition){
@@ -325,7 +328,7 @@ function setupWalkiePTTMic(btnId, myBoxId, getSrcLang, getTgtLang, otherBoxId){
       activeRec = new SpeechRecognition();
       const srcCode = getSrcLang();
       activeRec.lang = langByCode(srcCode)?.ttsLocale || srcCode;
-      activeRec.interimResults = true; // GBoard-style live interim streaming!
+      activeRec.interimResults = true; // Real-time word-by-word streaming!
       activeRec.continuous = true;
 
       activeRec.onresult = (ev) => {
@@ -389,7 +392,7 @@ async function processWalkieTranslation(text, src, tgt, myBox, otherBox){
     <div style="font-size:12px; color:#38BDF8;">[${src.toUpperCase()} ➔ ${tgt.toUpperCase()}]</div>
   `;
 
-  // Auto-speak strictly only if state.autoSpeakWalkie is enabled
+  // Auto-speak strictly only if autoSpeakWalkie is enabled
   if(state.autoSpeakWalkie){
     speakText(translated, tgt);
   }
@@ -448,6 +451,7 @@ function initQuickTranslateUI(){
 
   // Translate Action Button (Gemini AI Powered)
   document.getElementById('qtTranslateActionBtn').onclick = async () => {
+    primeAudioOnUserGesture();
     const text = inputArea.value.trim();
     if(!text){
       showToast('Please enter text to translate', 'error');
@@ -467,6 +471,7 @@ function initQuickTranslateUI(){
   };
 
   document.getElementById('qtSpeakResultBtn').onclick = () => {
+    primeAudioOnUserGesture();
     if(resultText.textContent){
       speakText(resultText.textContent, tgtSel.value);
     }
@@ -482,6 +487,7 @@ function initQuickTranslateUI(){
 
   // Voice Input for Quick Translate
   document.getElementById('qtMicBtn').onclick = () => {
+    primeAudioOnUserGesture();
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if(!SpeechRecognition){
       showToast('Speech recognition not supported in this browser', 'error');
@@ -549,6 +555,7 @@ function initLiveInterpreterUI(){
   const visNode = document.getElementById('liveVisualizerNode');
 
   visNode.onclick = () => {
+    primeAudioOnUserGesture();
     if(state.isLiveActive){
       stopLiveInterpreter();
     } else {
@@ -634,6 +641,7 @@ function initPhrasebookUI(){
 
   document.querySelectorAll('.categoryPill').forEach(pill => {
     pill.onclick = () => {
+      primeAudioOnUserGesture();
       document.querySelectorAll('.categoryPill').forEach(p => p.classList.remove('active'));
       pill.classList.add('active');
       state.activePhraseCategory = pill.dataset.cat;
@@ -683,11 +691,11 @@ function renderPhraseCards(cat, query){
       <div class="phraseChinese">🇨🇳 ${escapeHtml(item.zh)}</div>
       <div class="phraseThai">🇹🇭 ${escapeHtml(item.th)}</div>
       <div class="phraseActions">
-        <button class="phraseActionBtn" onclick="speakText('${escapeHtml(item.my)}', 'my')">🔊 မြန်မာ</button>
-        <button class="phraseActionBtn" onclick="speakText('${escapeHtml(item.en)}', 'en')">🔊 English</button>
-        <button class="phraseActionBtn" onclick="speakText('${escapeHtml(item.zh)}', 'zh')">🔊 中文</button>
-        <button class="phraseActionBtn" onclick="speakText('${escapeHtml(item.th)}', 'th')">🔊 ไทย</button>
-        <button class="phraseActionBtn" onclick="navigator.clipboard.writeText('${escapeHtml(item.my)} / ${escapeHtml(item.en)}'); showToast('Copied!')">📋 Copy</button>
+        <button class="phraseActionBtn" onclick="primeAudioOnUserGesture(); speakText('${escapeHtml(item.my)}', 'my')">🔊 မြန်မာ</button>
+        <button class="phraseActionBtn" onclick="primeAudioOnUserGesture(); speakText('${escapeHtml(item.en)}', 'en')">🔊 English</button>
+        <button class="phraseActionBtn" onclick="primeAudioOnUserGesture(); speakText('${escapeHtml(item.zh)}', 'zh')">🔊 中文</button>
+        <button class="phraseActionBtn" onclick="primeAudioOnUserGesture(); speakText('${escapeHtml(item.th)}', 'th')">🔊 ไทย</button>
+        <button class="phraseActionBtn" onclick="navigator.clipboard.writeText('${escapeHtml(item.my)} / ${escapeHtml(item.en)}'); vibrate(8); showToast('Copied!')">📋 Copy</button>
       </div>
     `;
     container.appendChild(card);
@@ -813,6 +821,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   document.getElementById('chatSendMsgBtn')?.addEventListener('click', () => {
+    primeAudioOnUserGesture();
     const input = document.getElementById('chatTextInput');
     if(input && input.value.trim()){
       fbSendMessage(input.value.trim());
@@ -991,13 +1000,14 @@ function setupVoiceRecorder(){
 
   voiceBtn.addEventListener('mousedown', startVoiceRecord);
   voiceBtn.addEventListener('mouseup', stopVoiceRecord);
-  voiceBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startVoiceRecord(); }, { passive: false });
-  voiceBtn.addEventListener('touchend', (e) => { e.preventDefault(); stopVoiceRecord(); }, { passive: false });
+  voiceBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startVoiceRecord(); });
+  voiceBtn.addEventListener('touchend', (e) => { e.preventDefault(); stopVoiceRecord(); });
 }
 
 async function startVoiceRecord(){
   const voiceBtn = document.getElementById('chatVoiceToggleBtn');
   if(voiceBtn) voiceBtn.classList.add('recording');
+  primeAudioOnUserGesture();
   showToast(t('recording'));
   recordStartTime = Date.now();
 

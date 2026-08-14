@@ -1,13 +1,12 @@
 /* ==========================================================
-   OmniTalk PRO v8.0 — firebase-chat.js
-   High-Precision AI & Neural Cross-Language Translation Engine
+   OmniTalk PRO v9.0 — firebase-chat.js
+   Secure AI & Neural Cross-Language Translation Pipeline
    Features:
+   - Direct Secure Client-to-Google TLS Calling
+   - Multi-Model Gemini 2.5 / 2.0 / 1.5 Architecture
+   - Google Neural AI Free Fallback Engine
    - 1:1 Direct Chat & Work Group Chat
-   - Gemini 2.5 / 2.0 / 1.5 Multimodal Translation
-   - Google Neural AI Free Fallback Engine (Accurate Idioms & Names)
-   - Real-time Client-Side Auto-Translation into Viewer's Chosen Language
-   - Smart Demo Mode with Simulated Multilingual Auto-Replies
-   - Voice Note Recording with AI Speech-to-Text & Translation
+   - Voice Note Recording with Audio & AI Transcribe
 ========================================================== */
 
 let fbApp = null, fbAuth = null, fbDb = null, fbStorage = null;
@@ -270,15 +269,15 @@ async function translateMessageOnRead(rawText, sourceLang, targetLang){
   try{
     let translated = '';
     const key = (typeof state !== 'undefined' && state.apiKey) ? state.apiKey : '';
-    const model = (typeof state !== 'undefined' && state.aiModel) ? state.aiModel : 'gemini-2.0-flash';
+    const model = (typeof state !== 'undefined' && state.aiModel) ? state.aiModel : 'gemini-2.5-flash';
     const domain = (typeof state !== 'undefined' && state.aiDomain) ? state.aiDomain : 'general';
 
-    // 1. Google Gemini AI Translation (when API Key is provided)
+    // 1. Google Gemini AI Translation (Direct TLS with User's key)
     if(key){
       translated = await callGeminiTranslate(rawText, sourceLang, targetLang, key, model, domain);
     }
 
-    // 2. Google Neural Free Machine Translation (Translates names and idioms with 100% accuracy)
+    // 2. Google Neural Free Machine Translation (Translates names & idioms accurately)
     if(!translated){
       translated = await callGoogleNeuralTranslate(rawText, sourceLang, targetLang);
     }
@@ -317,7 +316,7 @@ async function callGoogleNeuralTranslate(text, src, tgt){
 }
 
 /** Google Gemini Multimodal / Context-Aware Translation */
-async function callGeminiTranslate(text, src, tgt, key, model = 'gemini-2.0-flash', domain = 'general'){
+async function callGeminiTranslate(text, src, tgt, key, model = 'gemini-2.5-flash', domain = 'general'){
   const domainPrompts = {
     general: 'natural human conversation, polite everyday dialogue',
     workplace: 'workplace operations, factory management, engineering, and overtime tasks',
@@ -326,10 +325,10 @@ async function callGeminiTranslate(text, src, tgt, key, model = 'gemini-2.0-flas
   };
   const domainContext = domainPrompts[domain] || domainPrompts.general;
   
-  const prompt = `You are a high-precision real-time cross-language translator.
-Translate the following text from language code "${src||'auto'}" into target language code "${tgt}".
+  const prompt = `You are an expert real-time translator specializing in Southeast Asian and East Asian languages (Burmese/Myanmar, Chinese, Thai, English).
+Translate the following input from language code "${src||'auto'}" into target language code "${tgt}".
 
-Guidelines:
+Rules:
 1. Preserve natural grammar, colloquial idioms, and polite particles (e.g. in Burmese: ခင်ဗျာ/ရှင်/နော်, in Thai: ครับ/ค่ะ).
 2. For conversational phrases (e.g. "ထမင်းစားပြီးပြီလား?"), translate naturally as "Have you eaten yet?" in English or "你吃饭了吗？" in Chinese or "กินข้าวหรือยังครับ" in Thai.
 3. For personal names (e.g. "Daniel David"), transliterate phonetically (e.g. "ဒန်နီရယ် ဒေးဗစ်" in Burmese, "丹尼尔·大卫" in Chinese, "แดเนียล เดวิด" in Thai) - DO NOT translate names as literal verbs!
@@ -338,7 +337,7 @@ Guidelines:
 
 Input: "${text}"`;
   
-  let chosenModel = model || 'gemini-2.0-flash';
+  let chosenModel = model || 'gemini-2.5-flash';
   if(chosenModel === 'gemini-2.5-flash') chosenModel = 'gemini-2.0-flash';
   if(chosenModel === 'gemini-2.5-pro') chosenModel = 'gemini-1.5-pro';
 
