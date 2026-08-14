@@ -2,21 +2,22 @@
    OmniTalk — app.js
    Application Controller & Workspace Tools Manager
    Features:
-   - WeChat & DingTalk Navigation
+   - WeChat & DingTalk Navigation with Hardware Back Button Support
    - Real-time Multi-Language Chat & Voice Transcribe
-   - Workspace Hub:
+   - Workspace Glass Hub:
      1. Walkie-Talkie 2-Person Live Split Screen Mode
      2. Quick Translate & Photo Scan OCR
      3. Gemini Live Simultaneous Hands-Free Interpreter
      4. 120+ Verified Survival & Workplace Phrasebook
+   - Comprehensive Settings & Customization
    - i18n Localization in English, Chinese, Thai, Myanmar
 ========================================================== */
 
-const APP_VERSION = '2026.08.15-v3';
+const APP_VERSION = '2026.08.15-v4';
 
 const state = {
   activeTab: 'chats',
-  currentView: 'main',
+  currentSubView: null, // null | 'walkie' | 'quick' | 'live' | 'phrasebook' | 'chatroom' | 'modal'
   langA: typeof langByCode === 'function' ? langByCode('en') : { code:'en', name:'English', flag:'🇺🇸', ttsLocale:'en-US' },
   langB: typeof langByCode === 'function' ? langByCode('my') : { code:'my', name:'Myanmar', flag:'🇲🇲', ttsLocale:'my-MM' },
   messages: [],
@@ -25,9 +26,70 @@ const state = {
   autoTranslate: true,
   autoTranscribe: true,
   autoSpeakWalkie: true,
+  soundEffects: true,
+  voiceSpeed: 1.0,
   isLiveActive: false,
   activePhraseCategory: 'all'
 };
+
+/* =========================================================
+   HARDWARE & BROWSER BACK BUTTON NAVIGATION (History API)
+========================================================= */
+function pushNavigationState(viewName){
+  state.currentSubView = viewName;
+  try {
+    history.pushState({ view: viewName }, '', '');
+  } catch(e){}
+}
+
+window.addEventListener('popstate', (e) => {
+  // Check what is currently open and close it gracefully
+  const chatRoom = document.getElementById('chatRoomView');
+  const addModal = document.getElementById('addFriendModal');
+  const groupModal = document.getElementById('createGroupModal');
+  const qrModal = document.getElementById('qrModal');
+
+  if(chatRoom && chatRoom.style.display !== 'none'){
+    chatRoom.style.display = 'none';
+    state.currentSubView = null;
+    return;
+  }
+
+  if(addModal && addModal.classList.contains('show')){
+    addModal.classList.remove('show');
+    state.currentSubView = null;
+    return;
+  }
+  if(groupModal && groupModal.classList.contains('show')){
+    groupModal.classList.remove('show');
+    state.currentSubView = null;
+    return;
+  }
+  if(qrModal && qrModal.classList.contains('show')){
+    qrModal.classList.remove('show');
+    state.currentSubView = null;
+    return;
+  }
+
+  const views = ['viewWalkieTalkie', 'viewQuickTranslate', 'viewLiveInterpreter', 'viewPhrasebook'];
+  let toolOpen = false;
+  views.forEach(id => {
+    const el = document.getElementById(id);
+    if(el && el.style.display !== 'none'){
+      el.style.display = 'none';
+      toolOpen = true;
+    }
+  });
+
+  if(toolOpen){
+    closeWorkspaceTool(false);
+    return;
+  }
+
+  if(state.activeTab !== 'chats'){
+    showTab('chats', false);
+  }
+});
 
 /* =========================================================
    TOAST & UTILITIES
@@ -69,10 +131,10 @@ function speakText(text, langCode){
     const ut = new SpeechSynthesisUtterance(text);
     const langObj = langByCode(langCode);
     ut.lang = langObj ? langObj.ttsLocale : (langCode === 'my' ? 'my-MM' : langCode);
-    ut.rate = 0.9;
+    ut.rate = state.voiceSpeed || 1.0;
     window.speechSynthesis.speak(ut);
   } catch(e){
-    console.warn('TTS playback error:', e);
+    console.warn('TTS error:', e);
   }
 }
 
@@ -100,9 +162,9 @@ function applyUILanguage(){
 /* =========================================================
    TAB NAVIGATION (WeChat/DingTalk Style)
 ========================================================= */
-function showTab(tabName){
+function showTab(tabName, pushState = true){
   state.activeTab = tabName;
-  closeWorkspaceTool();
+  closeWorkspaceTool(false);
 
   document.querySelectorAll('.navTabBtn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === tabName);
@@ -113,6 +175,8 @@ function showTab(tabName){
 
   const target = document.getElementById(`tabContent${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`);
   if(target) target.style.display = 'block';
+
+  if(pushState) pushNavigationState('tab_' + tabName);
 }
 
 /* =========================================================
@@ -121,7 +185,8 @@ function showTab(tabName){
 function openWorkspaceTool(viewName){
   // Hide main tabs
   document.querySelectorAll('.tabContent').forEach(c => c.style.display = 'none');
-  closeWorkspaceTool();
+  closeWorkspaceTool(false);
+  pushNavigationState('tool_' + viewName);
 
   if(viewName === 'walkie'){
     const el = document.getElementById('viewWalkieTalkie');
@@ -142,7 +207,7 @@ function openWorkspaceTool(viewName){
   }
 }
 
-function closeWorkspaceTool(){
+function closeWorkspaceTool(handleHistory = true){
   const views = ['viewWalkieTalkie', 'viewQuickTranslate', 'viewLiveInterpreter', 'viewPhrasebook'];
   views.forEach(id => {
     const el = document.getElementById(id);
@@ -197,7 +262,7 @@ function initWalkieTalkieUI(){
   if(autoBtn){
     autoBtn.onclick = () => {
       state.autoSpeakWalkie = !state.autoSpeakWalkie;
-      autoBtn.textContent = state.autoSpeakWalkie ? '🔊 အသံဖွင့်: ဖွင့်ထားသည်' : '🔇 အသံပိတ်: ပိတ်ထားသည်';
+      autoBtn.textContent = state.autoSpeakWalkie ? '🔊 အသံ: ဖွင့်ထားသည်' : '🔇 အသံ: ပိတ်ထားသည်';
       autoBtn.style.color = state.autoSpeakWalkie ? '#34D399' : '#94A3B8';
     };
   }
@@ -215,8 +280,7 @@ function setupWalkieMic(btnId, myBoxId, getSrcLang, getTgtLang, otherBoxId){
   btn.onclick = async () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if(!SpeechRecognition){
-      // Manual input prompt fallback
-      const text = prompt('စကားပြောရန် စာသားရိုက်ထည့်ပါ (Speech Recognition not supported in this browser):');
+      const text = prompt('စကားပြောရန် စာသားရိုက်ထည့်ပါ:');
       if(text) processWalkieTranslation(text, getSrcLang(), getTgtLang(), myBox, otherBox);
       return;
     }
@@ -395,7 +459,6 @@ function initLiveInterpreterUI(){
   selB.value = 'en';
 
   const visNode = document.getElementById('liveVisualizerNode');
-  const statusLabel = document.getElementById('liveStatusLabel');
 
   visNode.onclick = () => {
     if(state.isLiveActive){
@@ -552,6 +615,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       const keyInput = document.getElementById('apiKeyInput');
       if(keyInput) keyInput.value = savedKey;
     }
+    const savedSpeed = localStorage.getItem('ot_voiceSpeed');
+    if(savedSpeed){
+      state.voiceSpeed = parseFloat(savedSpeed);
+      const speedSlider = document.getElementById('voiceSpeedSlider');
+      const speedDisplay = document.getElementById('voiceSpeedDisplay');
+      if(speedSlider) speedSlider.value = savedSpeed;
+      if(speedDisplay) speedDisplay.textContent = savedSpeed + 'x';
+    }
   } catch(e){}
 
   const langSelect = document.getElementById('uiLangSelect');
@@ -576,6 +647,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     if(typeof renderRecentChatsList === 'function') renderRecentChatsList();
     if(typeof renderFriendsList === 'function') renderFriendsList(myFriendsCache);
     showToast('Language updated: ' + e.target.value.toUpperCase());
+  });
+
+  // Voice Speed Slider
+  const speedSlider = document.getElementById('voiceSpeedSlider');
+  const speedDisplay = document.getElementById('voiceSpeedDisplay');
+  speedSlider?.addEventListener('input', (e) => {
+    state.voiceSpeed = parseFloat(e.target.value);
+    if(speedDisplay) speedDisplay.textContent = e.target.value + 'x';
+    try { localStorage.setItem('ot_voiceSpeed', e.target.value); } catch(err){}
   });
 
   // API Key Input
@@ -626,22 +706,31 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Modals
   const addModal = document.getElementById('addFriendModal');
   const groupModal = document.getElementById('createGroupModal');
+  const qrModal = document.getElementById('qrModal');
 
   document.getElementById('addFriendModalBtn')?.addEventListener('click', () => {
+    pushNavigationState('modal');
     if(addModal) addModal.classList.add('show');
   });
   document.getElementById('btnOpenAddFriend')?.addEventListener('click', () => {
+    pushNavigationState('modal');
     if(addModal) addModal.classList.add('show');
   });
   document.getElementById('btnOpenCreateGroup')?.addEventListener('click', () => {
+    pushNavigationState('modal');
     populateGroupMembersChecklist();
     if(groupModal) groupModal.classList.add('show');
+  });
+  document.getElementById('btnShowMyQR')?.addEventListener('click', () => {
+    pushNavigationState('modal');
+    if(qrModal) qrModal.classList.add('show');
   });
 
   document.querySelectorAll('.modalCancelBtn').forEach(btn => {
     btn.addEventListener('click', () => {
       if(addModal) addModal.classList.remove('show');
       if(groupModal) groupModal.classList.remove('show');
+      if(qrModal) qrModal.classList.remove('show');
     });
   });
 
@@ -676,6 +765,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     showToast(t('groupCreatedSuccess'));
     if(groupModal) groupModal.classList.remove('show');
     if(nameInput) nameInput.value = '';
+  });
+
+  // Clear Chat History
+  document.getElementById('btnClearChatHistory')?.addEventListener('click', () => {
+    if(confirm('Are you sure you want to clear chat history and cache?')){
+      Object.keys(localStorage).forEach(k => {
+        if(k.startsWith('ot_demo_messages_')) localStorage.removeItem(k);
+      });
+      showToast('Chat history cleared!');
+      if(typeof renderRecentChatsList === 'function') renderRecentChatsList();
+    }
+  });
+
+  // Reset Demo Data
+  document.getElementById('btnResetDemoData')?.addEventListener('click', () => {
+    localStorage.removeItem('ot_demo_uid');
+    localStorage.removeItem('ot_demo_code');
+    Object.keys(localStorage).forEach(k => {
+      if(k.startsWith('ot_demo_')) localStorage.removeItem(k);
+    });
+    setupLocalDemoUser();
+    showToast('Demo data and contacts reset!');
   });
 
   // Workspace Bento Cards Click Event Listeners
@@ -734,12 +845,12 @@ function populateGroupMembersChecklist(){
     const row = document.createElement('label');
     row.style.display = 'flex';
     row.style.alignItems = 'center';
-    row.style.gap = '8px';
-    row.style.padding = '6px 0';
+    row.style.gap = '10px';
+    row.style.padding = '8px 4px';
     row.style.cursor = 'pointer';
     row.innerHTML = `
-      <input type="checkbox" class="memberCheckbox" value="${f.uid}" style="accent-color:var(--primary);">
-      <span>${escapeHtml(f.displayName)}</span>
+      <input type="checkbox" class="memberCheckbox" value="${f.uid}" style="width:18px; height:18px; accent-color:var(--primary);">
+      <span style="font-size:14px; font-weight:600; color:var(--text-main);">${escapeHtml(f.displayName)}</span>
     `;
     container.appendChild(row);
   });

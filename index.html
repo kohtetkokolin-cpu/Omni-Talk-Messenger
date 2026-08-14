@@ -19,7 +19,7 @@
 <!-- Top Navigation Header (WeChat/DingTalk Style) -->
 <header id="wechatTopBar" class="topNavBar">
   <div class="topNavLeft">
-    <div class="appBrandBadge">
+    <div class="appBrandBadge" id="appLogoHomeBtn">
       <img src="icon.svg" alt="OmniTalk Logo" class="appLogoImg">
       <h1 id="topAppTitle" class="appHeading" data-i18n="appTitle">OmniTalk</h1>
     </div>
@@ -32,11 +32,13 @@
   </div>
 </header>
 
-<!-- TAB 1: CHATS VIEW -->
+<!-- ========================================================= -->
+<!-- TAB 1: CHATS VIEW                                         -->
+<!-- ========================================================= -->
 <main id="tabContentChats" class="tabContent activeTab">
   <!-- Search Bar -->
   <div class="searchBarWrap">
-    <input type="text" id="chatSearchInput" placeholder="Search chats &amp; friends..." data-i18n-placeholder="searchPlaceholder">
+    <input type="text" id="chatSearchInput" placeholder="Search chats, friends, groups..." data-i18n-placeholder="searchPlaceholder">
   </div>
   
   <!-- My Friend Code Banner -->
@@ -48,39 +50,50 @@
     <button id="copyMyCodeBtn" class="codeCopyBtn" title="Copy code" data-i18n="copyCode">📋 Copy</button>
   </div>
 
-  <!-- Live Translation Banner -->
+  <!-- Live Translation Active Banner -->
   <div class="activeLiveTransBanner">
-    <span>⚡</span> <span data-i18n="activeTranslationBanner">AI Real-Time Cross-Language Translation Active</span>
+    <span>⚡</span> <span data-i18n="activeTranslationBanner">AI Real-Time Cross-Language Auto-Translation Active</span>
   </div>
 
   <!-- Recent Chats List -->
   <div id="recentChatsList" class="chatList"></div>
 </main>
 
-<!-- TAB 2: CONTACTS VIEW -->
+<!-- ========================================================= -->
+<!-- TAB 2: CONTACTS VIEW                                      -->
+<!-- ========================================================= -->
 <main id="tabContentContacts" class="tabContent" style="display:none;">
-  <div class="contactActionRow" id="btnOpenAddFriend">
-    <div class="contactActionIcon">➕</div>
-    <div class="contactActionText" data-i18n="addFriend">Add Friend by Code</div>
+  <!-- Action Buttons -->
+  <div class="glassActionRow" id="btnOpenAddFriend">
+    <div class="glassActionIconBadge emerald">➕</div>
+    <div class="glassActionText" data-i18n="addFriend">Add Friend by Code</div>
+    <div class="glassActionArrow">›</div>
   </div>
-  <div class="contactActionRow" id="btnOpenCreateGroup">
-    <div class="contactActionIcon">👥</div>
-    <div class="contactActionText" data-i18n="createGroup">Create Work Group</div>
+  <div class="glassActionRow" id="btnOpenCreateGroup">
+    <div class="glassActionIconBadge purple">👥</div>
+    <div class="glassActionText" data-i18n="createGroup">Create Work Group</div>
+    <div class="glassActionArrow">›</div>
   </div>
   
-  <div class="sectionTitle" data-i18n="createGroupTitle">Work Groups</div>
+  <div class="sectionTitle">
+    <span data-i18n="workGroupsTitle">Work Groups</span>
+  </div>
   <div id="groupChatsList" class="contactList"></div>
 
-  <div class="sectionTitle" data-i18n="tabContacts">Friends &amp; Contacts</div>
+  <div class="sectionTitle">
+    <span data-i18n="contactsTitle">Friends &amp; Directory</span>
+  </div>
   <div id="contactsList" class="contactList"></div>
 </main>
 
-<!-- TAB 3: WORKSPACE / TOOLS VIEW (DingTalk / Bento Hub with BIG EYE-CATCHING LOGO ICONS) -->
+<!-- ========================================================= -->
+<!-- TAB 3: WORKSPACE / TOOLS VIEW (Bento Glass Hub)           -->
+<!-- ========================================================= -->
 <main id="tabContentTools" class="tabContent" style="display:none;">
   <div class="homeGrid">
     <!-- Card 1: Walkie-Talkie Hero Card -->
     <button class="homeCard heroCard" data-view="walkie">
-      <div class="cardBigIconWrapper iconWalkie">💬</div>
+      <div class="toolIconBadge emerald">💬</div>
       <div>
         <div class="homeCardTitle" data-i18n="cardConversationTitle">Walkie-Talkie မျက်နှာချင်းဆိုင် စကားပြောခြင်း</div>
         <div class="homeCardDesc" data-i18n="cardConversationDesc">၂ ယောက် မျက်နှာချင်းဆိုင် အပေါ်အောက် panel လှည့်၍ စကားပြန်ဆိုစနစ်</div>
@@ -90,21 +103,25 @@
 
     <!-- Card 2: Quick Translate & OCR -->
     <button class="homeCard" data-view="quick">
-      <div class="cardBigIconWrapper iconQuick">🔍</div>
-      <div class="homeCardTitle" data-i18n="cardQuickTitle">အမြန်ဘာသာပြန် &amp; OCR</div>
-      <div class="homeCardDesc" data-i18n="cardQuickDesc">စာသား၊ အသံ သို့မဟုတ် ဓာတ်ပုံ scan ဖတ်ရန်</div>
+      <div class="toolIconBadge cyan">🔍</div>
+      <div>
+        <div class="homeCardTitle" data-i18n="cardQuickTitle">အမြန်ဘာသာပြန် &amp; OCR</div>
+        <div class="homeCardDesc" data-i18n="cardQuickDesc">စာသား၊ အသံ သို့မဟုတ် ဓာတ်ပုံ scan ဖတ်ရန်</div>
+      </div>
     </button>
 
     <!-- Card 3: Gemini Live Interpreter -->
     <button class="homeCard" data-view="live">
-      <div class="cardBigIconWrapper iconLive">⚡</div>
-      <div class="homeCardTitle" data-i18n="cardLiveTitle">တိုက်ရိုက် စကားပြန်စနစ်</div>
-      <div class="homeCardDesc" data-i18n="cardLiveDesc">ခလုတ်နှိပ်စရာမလိုဘဲ တိုက်ရိုက် စကားပြန်ပေးမှု</div>
+      <div class="toolIconBadge amber">⚡</div>
+      <div>
+        <div class="homeCardTitle" data-i18n="cardLiveTitle">တိုက်ရိုက် စကားပြန်စနစ်</div>
+        <div class="homeCardDesc" data-i18n="cardLiveDesc">ခလုတ်နှိပ်စရာမလိုဘဲ တိုက်ရိုက် စကားပြန်ပေးမှု</div>
+      </div>
     </button>
 
     <!-- Card 4: 120+ Phrasebook Hero Card -->
     <button class="homeCard heroCard" data-view="phrasebook">
-      <div class="cardBigIconWrapper iconPhrasebook">📋</div>
+      <div class="toolIconBadge purple">📋</div>
       <div>
         <div class="homeCardTitle" data-i18n="cardPhrasebookTitle">အရေးပေါ်နှင့် လုပ်ငန်းခွင် စကားစုများ</div>
         <div class="homeCardDesc" data-i18n="cardPhrasebookDesc">လုပ်ငန်းခွင်၊ ဆေးရုံ၊ အရေးပေါ်၊ ဗီဇာသုံး အသံထွက်ပါ စကားစု ၁၂၀ ကျော်</div>
@@ -114,52 +131,118 @@
   </div>
 </main>
 
-<!-- TAB 4: SETTINGS VIEW -->
+<!-- ========================================================= -->
+<!-- TAB 4: SETTINGS VIEW (Comprehensive Grouped Glass Cards)  -->
+<!-- ========================================================= -->
 <main id="tabContentSettings" class="tabContent" style="display:none;">
-  <!-- Profile Summary -->
-  <div class="settingsCard" style="display:flex; align-items:center; gap:12px;">
-    <div class="avatarCircle" id="settingsProfileAvatar">HK</div>
-    <div>
-      <div id="settingsProfileName" style="font-size:16px; font-weight:800;">My Account</div>
-      <div id="settingsProfileCode" style="font-size:13px; color:var(--primary);">Friend ID: ------</div>
+  
+  <!-- Profile Glass Card -->
+  <div class="glassCard" style="display:flex; align-items:center; justify-content:space-between;">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <div class="avatarCircle" id="settingsProfileAvatar">HK</div>
+      <div>
+        <div id="settingsProfileName" style="font-size:16.5px; font-weight:800; color:#fff;">Htet Ko Ko Lin</div>
+        <div id="settingsProfileCode" style="font-size:13px; color:var(--primary); font-weight:700;">Friend ID: OT-794479</div>
+      </div>
+    </div>
+    <div style="display:flex; gap:6px;">
+      <button class="topIconBtn" id="btnShowMyQR" title="My QR Code">📷</button>
     </div>
   </div>
 
-  <!-- UI Language -->
-  <div class="settingsCard">
-    <label class="fieldLabel" data-i18n="uiLanguageLabel">App Interface Language (စနစ်သုံး ဘာသာစကား):</label>
-    <select id="uiLangSelect" class="settingsSelect">
-      <option value="my">🇲🇲 မြန်မာစာ (Myanmar)</option>
-      <option value="en">🇺🇸 English (US)</option>
-      <option value="zh">🇨🇳 中文 (Chinese)</option>
-      <option value="th">🇹🇭 ไทย (Thai)</option>
-    </select>
-  </div>
-
-  <!-- AI Engine & API Key -->
-  <div class="settingsCard">
-    <label class="fieldLabel" data-i18n="aiEngineLabel">Google Gemini AI Engine &amp; API Key:</label>
-    <input type="password" id="apiKeyInput" class="settingsInput" placeholder="AIzaSy... (optional for offline mode)">
-    <div class="fieldHint">For highest translation quality &amp; AI voice transcription, enter key from <a href="https://aistudio.google.com/apikey" target="_blank">Google AI Studio</a>.</div>
-  </div>
-
-  <!-- Auto-Translate Switches -->
-  <div class="settingsCard">
-    <div class="settingToggleRow">
-      <span class="settingToggleLabel" data-i18n="autoTranslateLabel">Auto-Translate Incoming Chats</span>
-      <input type="checkbox" id="autoTranslateToggle" checked style="width:20px; height:20px; accent-color:var(--primary);">
+  <!-- GROUP 1: Language & Translation Preferences -->
+  <div class="settingsGroupTitle">🌐 Language &amp; Translation Preferences</div>
+  <div class="glassCard">
+    <div style="margin-bottom:12px;">
+      <label class="switchTitle" data-i18n="uiLanguageLabel">App Interface Language (စနစ်သုံး ဘာသာစကား):</label>
+      <select id="uiLangSelect" class="glassSelect">
+        <option value="my">🇲🇲 မြန်မာစာ (Myanmar)</option>
+        <option value="en">🇺🇸 English (US)</option>
+        <option value="zh">🇨🇳 中文 (Chinese)</option>
+        <option value="th">🇹🇭 ไทย (Thai)</option>
+      </select>
     </div>
-    <div class="settingToggleRow" style="border-top:1px solid var(--surface-border); margin-top:8px; padding-top:8px;">
-      <span class="settingToggleLabel" data-i18n="autoTranscribeLabel">Auto-Transcribe Voice Notes</span>
-      <input type="checkbox" id="autoTranscribeToggle" checked style="width:20px; height:20px; accent-color:var(--primary);">
+
+    <div class="switchRow">
+      <div class="switchLabelWrap">
+        <div class="switchTitle" data-i18n="autoTranslateLabel">Auto-Translate Incoming Chats</div>
+        <div class="switchDesc">Auto-translate all messages to your preferred reading language.</div>
+      </div>
+      <label class="glassSwitch">
+        <input type="checkbox" id="autoTranslateToggle" checked>
+        <span class="glassSlider"></span>
+      </label>
+    </div>
+
+    <div class="switchRow">
+      <div class="switchLabelWrap">
+        <div class="switchTitle" data-i18n="autoTranscribeLabel">Auto-Transcribe Voice Notes</div>
+        <div class="switchDesc">Transcribe audio messages to text and translate automatically.</div>
+      </div>
+      <label class="glassSwitch">
+        <input type="checkbox" id="autoTranscribeToggle" checked>
+        <span class="glassSlider"></span>
+      </label>
     </div>
   </div>
 
-  <!-- Firebase Status -->
-  <div class="settingsCard">
-    <label class="fieldLabel">Cloud Synchronization Status:</label>
-    <div style="color:var(--primary); font-size:13.5px; font-weight:700;">● Connected / Live Sync Ready</div>
-    <div class="fieldHint">Real-time cross-device chats powered by Firebase &amp; Gemini AI.</div>
+  <!-- GROUP 2: AI Engine & Audio Engine -->
+  <div class="settingsGroupTitle">🤖 AI Engine &amp; Speech Configuration</div>
+  <div class="glassCard">
+    <div style="margin-bottom:12px;">
+      <label class="switchTitle" data-i18n="aiEngineLabel">Google Gemini AI API Key:</label>
+      <input type="password" id="apiKeyInput" class="glassInput" placeholder="AIzaSy... (optional for demo)">
+      <div class="switchDesc" style="margin-top:6px;">For real-time translation &amp; voice AI, get free key from <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--primary);">Google AI Studio</a>.</div>
+    </div>
+
+    <div class="sliderRow">
+      <div class="sliderHeader">
+        <span data-i18n="voiceSpeedLabel">Voice Reading Speed (TTS):</span>
+        <span id="voiceSpeedDisplay" style="color:var(--primary); font-weight:800;">1.0x</span>
+      </div>
+      <input type="range" id="voiceSpeedSlider" class="glassRangeSlider" min="0.5" max="1.5" step="0.1" value="1.0">
+    </div>
+
+    <div class="switchRow" style="margin-top:8px;">
+      <div class="switchLabelWrap">
+        <div class="switchTitle" data-i18n="autoSpeakLabel">Auto-Speak Translated Speech (TTS)</div>
+        <div class="switchDesc">Automatically pronounce translated speech out loud.</div>
+      </div>
+      <label class="glassSwitch">
+        <input type="checkbox" id="autoSpeakToggle" checked>
+        <span class="glassSlider"></span>
+      </label>
+    </div>
+  </div>
+
+  <!-- GROUP 3: Sound & Data Management -->
+  <div class="settingsGroupTitle">💾 Sound, Privacy &amp; Data</div>
+  <div class="glassCard">
+    <div class="switchRow">
+      <div class="switchLabelWrap">
+        <div class="switchTitle" data-i18n="soundEffectsLabel">Sound Effects &amp; Haptics</div>
+        <div class="switchDesc">Play subtle sound alerts when receiving messages.</div>
+      </div>
+      <label class="glassSwitch">
+        <input type="checkbox" id="soundEffectsToggle" checked>
+        <span class="glassSlider"></span>
+      </label>
+    </div>
+
+    <button class="glassBtn" id="btnClearChatHistory" style="margin-top:10px;">
+      <span>🗑️</span> <span data-i18n="clearHistoryLabel">Clear Chat History &amp; Cache</span>
+    </button>
+    <button class="glassBtn" id="btnResetDemoData">
+      <span>🔄</span> <span data-i18n="resetDemoLabel">Reset Demo Contacts &amp; Data</span>
+    </button>
+  </div>
+
+  <!-- GROUP 4: About & Cloud Sync -->
+  <div class="settingsGroupTitle">ℹ️ About OmniTalk</div>
+  <div class="glassCard" style="text-align:center;">
+    <div style="font-size:16px; font-weight:800; color:#FFFFFF; margin-bottom:4px;">OmniTalk v2.5.0</div>
+    <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">Speak Local, Connect Global • Build 2026.08.15</div>
+    <div style="font-size:12px; color:var(--primary); font-weight:700;">● Standalone Ready / Multi-Language Engine Active</div>
   </div>
 </main>
 
@@ -189,7 +272,7 @@
     <!-- Center Divider Bar -->
     <div class="walkieCenterDivider">
       <button class="walkieSwapBtn" id="walkieSwapLangsBtn">⇄ ဘာသာစကား လဲလှယ်မည်</button>
-      <button class="walkieSwapBtn" id="walkieAutoSpeakToggle" style="color:#34D399;">🔊 အသံဖွင့်: ဖွင့်ထားသည်</button>
+      <button class="walkieSwapBtn" id="walkieAutoSpeakToggle" style="color:#34D399;">🔊 အသံ: ဖွင့်ထားသည်</button>
     </div>
 
     <!-- Bottom Normal Panel (You) -->
@@ -356,12 +439,41 @@
   <div class="appModalCard">
     <h3 data-i18n="createGroupTitle">Create Work Group</h3>
     <input type="text" id="groupNameInput" class="modalInput" placeholder="e.g. Global Tech Team" data-i18n-placeholder="groupNamePlaceholder">
-    <div class="fieldLabel" data-i18n="selectMembers" style="margin-top:10px;">Select Members:</div>
-    <div id="groupMembersChecklist" class="contactList" style="max-height:160px; overflow-y:auto; margin-bottom:12px;"></div>
+    <div class="switchTitle" data-i18n="selectMembers" style="margin-top:10px;">Select Members:</div>
+    <div id="groupMembersChecklist" class="contactList" style="max-height:160px; overflow-y:auto; margin-bottom:12px; margin-top:8px;"></div>
     <div class="modalActions">
       <button class="btnGhost modalCancelBtn" data-i18n="btnCancel">Cancel</button>
       <button id="confirmCreateGroupBtn" class="btnPrimary" data-i18n="btnCreate">Create Group</button>
     </div>
+  </div>
+</div>
+
+<!-- MODAL: MY QR CODE -->
+<div id="qrModal" class="appModalOverlay">
+  <div class="appModalCard" style="text-align:center;">
+    <h3 data-i18n="qrCodeTitle">My OmniTalk QR Code</h3>
+    <div style="background:#fff; padding:20px; border-radius:16px; display:inline-block; margin:16px 0;">
+      <svg width="180" height="180" viewBox="0 0 100 100">
+        <rect width="100" height="100" fill="#ffffff" />
+        <rect x="10" y="10" width="30" height="30" fill="#0B0F19" />
+        <rect x="15" y="15" width="20" height="20" fill="#ffffff" />
+        <rect x="20" y="20" width="10" height="10" fill="#10B981" />
+        
+        <rect x="60" y="10" width="30" height="30" fill="#0B0F19" />
+        <rect x="65" y="15" width="20" height="20" fill="#ffffff" />
+        <rect x="70" y="20" width="10" height="10" fill="#06B6D4" />
+
+        <rect x="10" y="60" width="30" height="30" fill="#0B0F19" />
+        <rect x="15" y="65" width="20" height="20" fill="#ffffff" />
+        <rect x="20" y="70" width="10" height="10" fill="#8B5CF6" />
+
+        <rect x="45" y="45" width="10" height="10" fill="#10B981" />
+        <rect x="60" y="60" width="15" height="15" fill="#0B0F19" />
+        <rect x="80" y="75" width="10" height="15" fill="#0B0F19" />
+      </svg>
+    </div>
+    <div id="qrCodeFriendId" style="font-size:15px; font-weight:800; color:var(--primary); margin-bottom:12px;">ID: OT-794479</div>
+    <button class="btnPrimary modalCancelBtn" style="width:100%;">Close</button>
   </div>
 </div>
 

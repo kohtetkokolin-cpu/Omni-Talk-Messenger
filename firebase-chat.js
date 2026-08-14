@@ -4,9 +4,9 @@
    Features:
    - 1:1 Direct Chat & Work Group Chat (WeChat + DingTalk style)
    - Real-time Client-Side Auto-Translation into Viewer's Chosen Language
+   - Smart Demo Mode with Simulated Multilingual Auto-Replies
    - Voice Note Recording with AI Speech-to-Text & Translation
    - Photo & Document/PDF File Sharing
-   - Zero-server fallback with preloaded demo conversations
 ========================================================== */
 
 let fbApp = null, fbAuth = null, fbDb = null, fbStorage = null;
@@ -63,7 +63,6 @@ async function fbInit(){
       currentUser = { uid, ...userDoc.data() };
     }
     renderMyProfileCard();
-    initChatListeners();
     return true;
   }catch(e){
     console.error('Firebase init error:', e);
@@ -97,9 +96,11 @@ function renderMyProfileCard(){
   const profNameEl = document.getElementById('settingsProfileName');
   const profCodeEl = document.getElementById('settingsProfileCode');
   const profAvatarEl = document.getElementById('settingsProfileAvatar');
+  const qrIdEl = document.getElementById('qrCodeFriendId');
   if(profNameEl && currentUser) profNameEl.textContent = currentUser.displayName;
   if(profCodeEl && currentUser) profCodeEl.textContent = 'Friend ID: OT-' + currentUser.friendCode;
   if(profAvatarEl && currentUser) profAvatarEl.textContent = currentUser.displayName.slice(0, 2).toUpperCase();
+  if(qrIdEl && currentUser) qrIdEl.textContent = 'ID: OT-' + currentUser.friendCode;
 }
 
 /* ---------------- Pre-populated Demo Multilingual Chats ---------------- */
@@ -120,7 +121,7 @@ function setupDemoChats(){
     }
   ];
 
-  // Local messages storage for demo
+  // Populate Demo messages if empty
   if(!localStorage.getItem('ot_demo_messages_demo_group_1')){
     const initialGroupMsgs = [
       {
@@ -128,7 +129,7 @@ function setupDemoChats(){
         senderId: 'demo_zh_1',
         senderName: 'Zhang Wei',
         sourceLang: 'zh',
-        text: '大家好，新版本 OmniTalk UI 已经准备好了，大家测试顺利吗？',
+        text: '大家好，新版本 OmniTalk UI 已经测试完成，大家觉得如何？',
         timestamp: Date.now() - 3600000
       },
       {
@@ -136,9 +137,9 @@ function setupDemoChats(){
         senderId: 'demo_th_2',
         senderName: 'Somchai',
         sourceLang: 'th',
-        text: 'การออกแบบใหม่ยอดเยี่ยมมาก ระบบแปลเสียงทำงานได้เร็วมาก',
+        text: 'การออกแบบใหม่ยอดเยี่ยมมาก ระบบแปลภาษาแบบเรียลไทม์ทำงานเร็วมาก',
         isAudio: true,
-        audioText: 'การออกแบบใหม่ยอดเยี่ยมมาก ระบบแปลเสียงทำงานได้เร็วมาก',
+        audioText: 'การออกแบบใหม่ยอดเยี่ยมมาก ระบบแปลภาษาแบบเรียลไทม์ทำงานเร็วมาก',
         duration: '0:12',
         timestamp: Date.now() - 1800000
       },
@@ -227,6 +228,9 @@ async function openChatSession(type, targetId, title){
   if(titleEl) titleEl.textContent = title;
   if(chatRoom) chatRoom.style.display = 'flex';
 
+  // Push history state for phone back button support
+  if(typeof pushNavigationState === 'function') pushNavigationState('chatroom');
+
   const container = document.getElementById('chatMessagesContainer');
   if(container) container.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:20px;">⚡ Loading conversation...</div>';
 
@@ -268,7 +272,7 @@ async function translateMessageOnRead(rawText, sourceLang, targetLang){
 
   try{
     let translated = '';
-    // If Gemini API is available in state or window
+    // If Gemini API Key is configured in state
     if(typeof state !== 'undefined' && state.apiKey){
       translated = await callGeminiTranslate(rawText, sourceLang, targetLang, state.apiKey);
     } else {
@@ -342,7 +346,7 @@ async function renderChatMessages(messages){
       const translatedAudioText = await translateMessageOnRead(msg.audioText, msg.sourceLang, activeReadingLang);
       bubble.innerHTML = `
         <div class="audioBubbleWrap">
-          <button class="audioPlayBtn" onclick="playAudioBlob('${msg.id}')">▶</button>
+          <button class="audioPlayBtn" onclick="speakText('${escapeHtml(translatedAudioText)}', '${activeReadingLang}')">▶</button>
           <div class="audioWaveform"></div>
           <span class="audioDuration">${msg.duration || '0:08'}</span>
         </div>
@@ -439,6 +443,9 @@ async function fbSendMessage(text){
     localStorage.setItem('ot_demo_messages_' + targetId, JSON.stringify(msgs));
     renderChatMessages(msgs);
     renderRecentChatsList();
+
+    // Trigger simulated colleague reply after 1.4 seconds in demo mode!
+    triggerDemoAutoReply(targetId);
     return;
   }
 
@@ -450,6 +457,55 @@ async function fbSendMessage(text){
     ...newMsg,
     timestamp: firebase.firestore.FieldValue.serverTimestamp()
   });
+}
+
+function triggerDemoAutoReply(targetId){
+  setTimeout(() => {
+    if(!activeChatSession || activeChatSession.targetId !== targetId) return;
+
+    let autoReply = null;
+    if(targetId === 'demo_group_1'){
+      autoReply = {
+        senderId: 'demo_zh_1',
+        senderName: 'Zhang Wei (🇨🇳)',
+        sourceLang: 'zh',
+        text: '收到你的消息了！实时翻译效果非常棒，我们继续测试。',
+        timestamp: Date.now()
+      };
+    } else if(targetId === 'demo_th_2'){
+      autoReply = {
+        senderId: 'demo_th_2',
+        senderName: 'Somchai (🇹🇭)',
+        sourceLang: 'th',
+        text: 'ขอบคุณครับ ได้รับข้อความแล้ว ระบบแปลอัตโนมัติดีมาก',
+        timestamp: Date.now()
+      };
+    } else if(targetId === 'demo_en_3'){
+      autoReply = {
+        senderId: 'demo_en_3',
+        senderName: 'Sarah Jenkins (🇺🇸)',
+        sourceLang: 'en',
+        text: 'Message received! The live AI translation is working seamlessly.',
+        timestamp: Date.now()
+      };
+    } else {
+      autoReply = {
+        senderId: 'demo_my_4',
+        senderName: 'Khin Myat Noe (🇲🇲)',
+        sourceLang: 'my',
+        text: 'မင်္ဂလာပါ! မက်ဆေ့ခ်ျ လက်ခံရရှိပါတယ်ခင်ဗျာ။',
+        timestamp: Date.now()
+      };
+    }
+
+    const stored = localStorage.getItem('ot_demo_messages_' + targetId);
+    const msgs = stored ? JSON.parse(stored) : [];
+    msgs.push(autoReply);
+    localStorage.setItem('ot_demo_messages_' + targetId, JSON.stringify(msgs));
+    renderChatMessages(msgs);
+    renderRecentChatsList();
+    if(typeof showToast === 'function') showToast(`New message from ${autoReply.senderName}`);
+  }, 1400);
 }
 
 /** Send Voice Note Audio */
@@ -553,7 +609,7 @@ function renderFriendsList(friends){
       <div class="avatarCircle">${f.displayName.slice(0, 2).toUpperCase()}</div>
       <div class="chatItemInfo">
         <div class="chatItemTitle">${escapeHtml(f.displayName)}</div>
-        <div class="chatItemSnippet" style="color:var(--primary);">ID: ${f.friendCode}</div>
+        <div class="chatItemSnippet" style="color:var(--primary); font-weight:700;">ID: ${f.friendCode}</div>
       </div>
     `;
     container.appendChild(item);
