@@ -1,5 +1,5 @@
 /* ==========================================================
-   OmniTalk — data.js
+   OmniTalk PRO v8.0 — data.js
    Languages, phrasebooks, offline dictionaries, vocabulary.
 ========================================================== */
 

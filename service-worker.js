@@ -1,5 +1,5 @@
-// OmniTalk — Service Worker (Network-First Strategy for Instant Live Updates)
-const CACHE_VERSION = 'omnitalk-v6-live';
+// OmniTalk PRO v8.0 — Service Worker
+const CACHE_VERSION = 'omnitalk-pro-v8-0';
 
 const SHELL_FILES = [
   './',
@@ -24,7 +24,7 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => Promise.all(
-      keys.filter((k) => k !== CACHE_VERSION).map((k) => caches.delete(k))
+      keys.map((k) => caches.delete(k))
     )).then(() => self.clients.claim())
   );
 });

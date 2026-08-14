@@ -1,5 +1,5 @@
 /* ==========================================================
-   OmniTalk — app.js
+   OmniTalk PRO v8.0 — app.js
    Application Controller & Workspace Tools Manager
    Features:
    - WeChat & DingTalk Navigation with Hardware Back Button Support
@@ -10,10 +10,10 @@
      3. Gemini Live Bilateral Simultaneous Voice-to-Voice Interpreter
      4. 120+ Verified Survival & Workplace Phrasebook
    - Multi-Model Gemini 2.5 / 2.0 / 1.5 Engine & Natural Multi-Language TTS
-   - i18n Localization in English, Chinese, Thai, Myanmar
+   - Prominent Versioning & Network-First Caching
 ========================================================== */
 
-const APP_VERSION = '2026.08.15-v7';
+const APP_VERSION = 'v8.0.0 (Build 2026.08.15)';
 
 const state = {
   activeTab: 'chats',
@@ -372,15 +372,16 @@ function setupWalkiePTTMic(btnId, myBoxId, getSrcLang, getTgtLang, otherBoxId){
     }
   };
 
-  // Pointer & Touch Handlers
   btn.addEventListener('pointerdown', startPTT);
   btn.addEventListener('pointerup', stopPTT);
   btn.addEventListener('pointercancel', stopPTT);
+  btn.addEventListener('touchstart', startPTT, { passive: false });
+  btn.addEventListener('touchend', stopPTT, { passive: false });
 }
 
 async function processWalkieTranslation(text, src, tgt, myBox, otherBox){
   myBox.innerHTML = `<div style="font-size:15px; color:#FFFFFF; font-weight:600;">"${escapeHtml(text)}"</div>`;
-  otherBox.innerHTML = '<span style="color:#38BDF8;">⚡ Gemini AI ဖြင့် ဘာသာပြန်နေပါသည်...</span>';
+  otherBox.innerHTML = '<span style="color:#38BDF8;">⚡ AI ဖြင့် ဘာသာပြန်နေပါသည်...</span>';
 
   const translated = await translateMessageOnRead(text, src, tgt);
   otherBox.innerHTML = `
@@ -454,7 +455,7 @@ function initQuickTranslateUI(){
     }
     vibrate(10);
     resultCard.style.display = 'block';
-    resultText.innerHTML = '<span style="color:#38BDF8;">⚡ Gemini AI ဖြင့် ဘာသာပြန်နေပါသည်...</span>';
+    resultText.innerHTML = '<span style="color:#38BDF8;">⚡ AI ဖြင့် ဘာသာပြန်နေပါသည်...</span>';
 
     const trans = await translateMessageOnRead(text, srcSel.value, tgtSel.value);
     resultText.textContent = trans;
@@ -580,7 +581,6 @@ function startLiveInterpreter(langA, langB){
     const lastIdx = e.results.length - 1;
     const spoken = e.results[lastIdx][0].transcript;
     if(spoken && spoken.trim()){
-      // Bilateral translation: translate to other party's language and speak out loud!
       const trans = await translateMessageOnRead(spoken, langA, langB);
       appendLiveTranscript(spoken, trans, langA, langB);
       
@@ -991,8 +991,8 @@ function setupVoiceRecorder(){
 
   voiceBtn.addEventListener('mousedown', startVoiceRecord);
   voiceBtn.addEventListener('mouseup', stopVoiceRecord);
-  voiceBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startVoiceRecord(); });
-  voiceBtn.addEventListener('touchend', (e) => { e.preventDefault(); stopVoiceRecord(); });
+  voiceBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startVoiceRecord(); }, { passive: false });
+  voiceBtn.addEventListener('touchend', (e) => { e.preventDefault(); stopVoiceRecord(); }, { passive: false });
 }
 
 async function startVoiceRecord(){
@@ -1002,7 +1002,9 @@ async function startVoiceRecord(){
   recordStartTime = Date.now();
 
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+    });
     mediaRecorder = new MediaRecorder(stream);
     audioChunks = [];
     mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
