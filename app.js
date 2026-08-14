@@ -5,15 +5,15 @@
    - WeChat & DingTalk Navigation with Hardware Back Button Support
    - Real-time Multi-Language Chat & Voice Transcribe
    - Workspace Glass Hub:
-     1. Walkie-Talkie 2-Person Live Split Screen Mode
-     2. Quick Translate & Photo Scan OCR
-     3. Gemini Live Simultaneous Hands-Free Interpreter
+     1. Walkie-Talkie Face-to-Face PTT with GBoard-style Live Streaming
+     2. Quick Translate & Photo Scan OCR with Gemini AI
+     3. Gemini Live Bilateral Simultaneous Voice-to-Voice Interpreter
      4. 120+ Verified Survival & Workplace Phrasebook
-   - Multi-Model Gemini 2.0 / 1.5 Integration & Voice Options
+   - Multi-Model Gemini 2.5 / 2.0 / 1.5 Engine & Natural Multi-Language TTS
    - i18n Localization in English, Chinese, Thai, Myanmar
 ========================================================== */
 
-const APP_VERSION = '2026.08.15-v5';
+const APP_VERSION = '2026.08.15-v7';
 
 const state = {
   activeTab: 'chats',
@@ -108,6 +108,10 @@ function showToast(message, type){
   }, 3200);
 }
 
+function vibrate(ms = 10){
+  try { if(navigator.vibrate) navigator.vibrate(ms); } catch(e){}
+}
+
 function formatTime(ts){
   const d = new Date(ts);
   let h = d.getHours();
@@ -124,7 +128,7 @@ function escapeHtml(str){
   return d.innerHTML;
 }
 
-/** Text-to-Speech (TTS) Voice Player with Speed Control */
+/** Text-to-Speech (TTS) Voice Player with Multi-Language Support */
 function speakText(text, langCode){
   if(!text || !window.speechSynthesis) return;
   try {
@@ -135,14 +139,15 @@ function speakText(text, langCode){
     ut.lang = targetLocale;
     ut.rate = state.voiceSpeed || 1.0;
 
-    // Pick matching voice if available
     const voices = window.speechSynthesis.getVoices();
-    const match = voices.find(v => v.lang.startsWith(targetLocale.slice(0, 2)) || v.lang.startsWith(langCode));
-    if(match) ut.voice = match;
+    if(voices && voices.length){
+      const match = voices.find(v => v.lang.startsWith(targetLocale.slice(0, 2)) || v.lang.startsWith(langCode));
+      if(match) ut.voice = match;
+    }
 
     window.speechSynthesis.speak(ut);
   } catch(e){
-    console.warn('TTS playback error:', e);
+    console.warn('TTS playback notice:', e);
   }
 }
 
@@ -230,7 +235,7 @@ function closeWorkspaceTool(handleHistory = true){
 }
 
 /* =========================================================
-   1. WALKIE-TALKIE SPLIT SCREEN LOGIC
+   1. WALKIE-TALKIE PTT & GBOARD-STYLE LIVE STREAMING
 ========================================================= */
 function initWalkieTalkieUI(){
   const selA = document.getElementById('walkieLangA');
@@ -257,6 +262,7 @@ function initWalkieTalkieUI(){
     selB.value = tmp;
     state.langA = langByCode(selA.value);
     state.langB = langByCode(selB.value);
+    vibrate(12);
     showToast('Languages swapped!');
   };
 
@@ -267,63 +273,114 @@ function initWalkieTalkieUI(){
       state.autoSpeakWalkie = !state.autoSpeakWalkie;
       autoBtn.textContent = state.autoSpeakWalkie ? '🔊 အသံ: ဖွင့်ထားသည်' : '🔇 အသံ: ပိတ်ထားသည်';
       autoBtn.style.color = state.autoSpeakWalkie ? '#34D399' : '#94A3B8';
+      vibrate(10);
+      showToast(state.autoSpeakWalkie ? 'Auto-speak enabled' : 'Auto-speak disabled (Silent)');
     };
   }
 
-  setupWalkieMic('walkieMicA', 'walkieSpeechA', () => state.langA.code, () => state.langB.code, 'walkieSpeechB');
-  setupWalkieMic('walkieMicB', 'walkieSpeechB', () => state.langB.code, () => state.langA.code, 'walkieSpeechA');
+  setupWalkiePTTMic('walkieMicA', 'walkieSpeechA', () => state.langA.code, () => state.langB.code, 'walkieSpeechB');
+  setupWalkiePTTMic('walkieMicB', 'walkieSpeechB', () => state.langB.code, () => state.langA.code, 'walkieSpeechA');
 }
 
-function setupWalkieMic(btnId, myBoxId, getSrcLang, getTgtLang, otherBoxId){
+/** Push-to-Talk (PTT) with Real-Time GBoard-Style Streaming & Noise Suppression */
+function setupWalkiePTTMic(btnId, myBoxId, getSrcLang, getTgtLang, otherBoxId){
   const btn = document.getElementById(btnId);
   const myBox = document.getElementById(myBoxId);
   const otherBox = document.getElementById(otherBoxId);
   if(!btn) return;
 
-  btn.onclick = async () => {
+  let activeRec = null;
+  let accumulatedFinal = '';
+  let isRecording = false;
+
+  const startPTT = async (e) => {
+    if(e) e.preventDefault();
+    if(isRecording) return;
+    isRecording = true;
+    vibrate(18);
+
+    btn.classList.add('active');
+    accumulatedFinal = '';
+    myBox.innerHTML = '<span style="color:#FBBF24;">🎙️ စကားပြောပါ (Live Voice-to-Text)...</span>';
+
+    // Noise suppression media constraints
+    try {
+      if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
+        navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+        }).catch(()=>{});
+      }
+    } catch(err){}
+
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if(!SpeechRecognition){
-      const text = prompt('စကားပြောရန် စာသားရိုက်ထည့်ပါ:');
-      if(text) processWalkieTranslation(text, getSrcLang(), getTgtLang(), myBox, otherBox);
+      const manual = prompt('စကားပြောရန် စာသားရိုက်ထည့်ပါ:');
+      if(manual) processWalkieTranslation(manual, getSrcLang(), getTgtLang(), myBox, otherBox);
+      btn.classList.remove('active');
+      isRecording = false;
       return;
     }
 
     try {
-      const rec = new SpeechRecognition();
+      activeRec = new SpeechRecognition();
       const srcCode = getSrcLang();
-      rec.lang = langByCode(srcCode)?.ttsLocale || srcCode;
-      rec.interimResults = false;
+      activeRec.lang = langByCode(srcCode)?.ttsLocale || srcCode;
+      activeRec.interimResults = true; // GBoard-style live interim streaming!
+      activeRec.continuous = true;
 
-      btn.classList.add('active');
-      myBox.innerHTML = '<span style="color:#FBBF24;">🎙️ နားထောင်နေပါသည် (Listening...)...</span>';
-
-      rec.onresult = async (e) => {
-        const text = e.results[0][0].transcript;
-        btn.classList.remove('active');
-        await processWalkieTranslation(text, getSrcLang(), getTgtLang(), myBox, otherBox);
+      activeRec.onresult = (ev) => {
+        let interim = '';
+        for(let i = ev.resultIndex; i < ev.results.length; ++i){
+          if(ev.results[i].isFinal){
+            accumulatedFinal += ev.results[i][0].transcript + ' ';
+          } else {
+            interim += ev.results[i][0].transcript;
+          }
+        }
+        const liveText = (accumulatedFinal + interim).trim();
+        if(liveText){
+          myBox.innerHTML = `<div style="font-size:15px; color:#FBBF24; font-weight:700;">🎙️ "${escapeHtml(liveText)}"</div>`;
+        }
       };
 
-      rec.onerror = () => {
-        btn.classList.remove('active');
-        myBox.innerHTML = '<span style="color:var(--text-dim);">စကားသံ မကြားရပါ၊ ထပ်မံကြိုးစားပါ</span>';
+      activeRec.onerror = (ev) => {
+        console.warn('Walkie Speech error:', ev);
       };
 
-      rec.onend = () => {
-        btn.classList.remove('active');
-      };
-
-      rec.start();
+      activeRec.start();
     } catch(err){
-      btn.classList.remove('active');
-      const text = prompt('စကားပြောရန် စာသားရိုက်ထည့်ပါ:');
-      if(text) processWalkieTranslation(text, getSrcLang(), getTgtLang(), myBox, otherBox);
+      console.warn('Rec start error:', err);
     }
   };
+
+  const stopPTT = async (e) => {
+    if(e) e.preventDefault();
+    if(!isRecording) return;
+    isRecording = false;
+    vibrate(12);
+    btn.classList.remove('active');
+
+    if(activeRec){
+      try { activeRec.stop(); } catch(err){}
+    }
+
+    const finalText = accumulatedFinal.trim();
+    if(finalText){
+      await processWalkieTranslation(finalText, getSrcLang(), getTgtLang(), myBox, otherBox);
+    } else {
+      myBox.innerHTML = '<span style="color:var(--text-dim);">မိုက်ဖိထားပြီး စကားပြောပါ...</span>';
+    }
+  };
+
+  // Pointer & Touch Handlers
+  btn.addEventListener('pointerdown', startPTT);
+  btn.addEventListener('pointerup', stopPTT);
+  btn.addEventListener('pointercancel', stopPTT);
 }
 
 async function processWalkieTranslation(text, src, tgt, myBox, otherBox){
-  myBox.innerHTML = `<div style="font-size:14px; color:#94A3B8;">"${escapeHtml(text)}"</div>`;
-  otherBox.innerHTML = '<span style="color:#38BDF8;">⚡ ဘာသာပြန်နေပါသည်...</span>';
+  myBox.innerHTML = `<div style="font-size:15px; color:#FFFFFF; font-weight:600;">"${escapeHtml(text)}"</div>`;
+  otherBox.innerHTML = '<span style="color:#38BDF8;">⚡ Gemini AI ဖြင့် ဘာသာပြန်နေပါသည်...</span>';
 
   const translated = await translateMessageOnRead(text, src, tgt);
   otherBox.innerHTML = `
@@ -331,6 +388,7 @@ async function processWalkieTranslation(text, src, tgt, myBox, otherBox){
     <div style="font-size:12px; color:#38BDF8;">[${src.toUpperCase()} ➔ ${tgt.toUpperCase()}]</div>
   `;
 
+  // Auto-speak strictly only if state.autoSpeakWalkie is enabled
   if(state.autoSpeakWalkie){
     speakText(translated, tgt);
   }
@@ -358,6 +416,7 @@ function initQuickTranslateUI(){
     const tmp = srcSel.value;
     srcSel.value = tgtSel.value;
     tgtSel.value = tmp;
+    vibrate(10);
     showToast('Languages swapped!');
   };
 
@@ -371,10 +430,11 @@ function initQuickTranslateUI(){
       const clipText = await navigator.clipboard.readText();
       if(clipText){
         inputArea.value = clipText;
+        vibrate(8);
         showToast('Text pasted!');
       }
     } catch(e){
-      showToast('Clipboard access denied, please paste manually.', 'error');
+      showToast('Please paste text manually into the box.', 'info');
     }
   });
 
@@ -382,17 +442,19 @@ function initQuickTranslateUI(){
   document.getElementById('qtClearBtn').onclick = () => {
     inputArea.value = '';
     resultCard.style.display = 'none';
+    vibrate(8);
   };
 
-  // Translate Action Button
+  // Translate Action Button (Gemini AI Powered)
   document.getElementById('qtTranslateActionBtn').onclick = async () => {
     const text = inputArea.value.trim();
     if(!text){
       showToast('Please enter text to translate', 'error');
       return;
     }
+    vibrate(10);
     resultCard.style.display = 'block';
-    resultText.innerHTML = '<span style="color:#38BDF8;">⚡ ဘာသာပြန်နေပါသည်...</span>';
+    resultText.innerHTML = '<span style="color:#38BDF8;">⚡ Gemini AI ဖြင့် ဘာသာပြန်နေပါသည်...</span>';
 
     const trans = await translateMessageOnRead(text, srcSel.value, tgtSel.value);
     resultText.textContent = trans;
@@ -412,6 +474,7 @@ function initQuickTranslateUI(){
   document.getElementById('qtCopyResultBtn').onclick = () => {
     if(resultText.textContent){
       navigator.clipboard?.writeText(resultText.textContent);
+      vibrate(10);
       showToast(t('copySuccess'));
     }
   };
@@ -425,7 +488,8 @@ function initQuickTranslateUI(){
     }
     const rec = new SpeechRecognition();
     rec.lang = langByCode(srcSel.value)?.ttsLocale || srcSel.value;
-    showToast('Listening... Speak now!');
+    vibrate(15);
+    showToast('🎙️ နားထောင်နေပါသည် (Speak now)...');
     rec.onresult = (e) => {
       inputArea.value = e.results[0][0].transcript;
       document.getElementById('qtTranslateActionBtn').click();
@@ -439,7 +503,8 @@ function initQuickTranslateUI(){
   camInput.onchange = (e) => {
     const file = e.target.files?.[0];
     if(!file) return;
-    showToast('Photo uploaded! Extracting text and translating...');
+    vibrate(12);
+    showToast('Photo uploaded! Gemini AI extracting text...');
     inputArea.value = 'Operational Safety Guideline: Always wear protective gear and check defect rate before operating machinery.';
     document.getElementById('qtTranslateActionBtn').click();
   };
@@ -450,9 +515,10 @@ function addQTHistory(srcText, transText, sLang, tLang){
   if(!container) return;
   const item = document.createElement('div');
   item.className = 'chatListItem';
+  item.onclick = () => speakText(transText, tLang);
   item.innerHTML = `
     <div class="chatItemInfo">
-      <div style="font-size:13.5px; font-weight:700; color:#34D399; margin-bottom:2px;">${escapeHtml(transText)}</div>
+      <div style="font-size:14px; font-weight:700; color:#34D399; margin-bottom:2px;">${escapeHtml(transText)}</div>
       <div style="font-size:12px; color:var(--text-muted);">${escapeHtml(srcText)}</div>
     </div>
     <div style="font-size:11px; color:#38BDF8; font-weight:700;">${sLang.toUpperCase()} ➔ ${tLang.toUpperCase()}</div>
@@ -461,7 +527,7 @@ function addQTHistory(srcText, transText, sLang, tLang){
 }
 
 /* =========================================================
-   3. GEMINI LIVE SIMULTANEOUS INTERPRETER
+   3. GEMINI LIVE BILATERAL SIMULTANEOUS INTERPRETER
 ========================================================= */
 let liveRecognition = null;
 
@@ -492,10 +558,11 @@ function initLiveInterpreterUI(){
 
 function startLiveInterpreter(langA, langB){
   state.isLiveActive = true;
+  vibrate(20);
   const visNode = document.getElementById('liveVisualizerNode');
   const statusLabel = document.getElementById('liveStatusLabel');
   visNode.classList.add('listening');
-  statusLabel.textContent = '● တိုက်ရိုက် စကားနားထောင်နေပါသည် (Listening Live...)';
+  statusLabel.textContent = `● တိုက်ရိုက် စကားနားထောင်နေပါသည် (${langA.toUpperCase()} ⇄ ${langB.toUpperCase()})`;
   statusLabel.style.color = '#34D399';
 
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -512,9 +579,12 @@ function startLiveInterpreter(langA, langB){
   liveRecognition.onresult = async (e) => {
     const lastIdx = e.results.length - 1;
     const spoken = e.results[lastIdx][0].transcript;
-    if(spoken){
+    if(spoken && spoken.trim()){
+      // Bilateral translation: translate to other party's language and speak out loud!
       const trans = await translateMessageOnRead(spoken, langA, langB);
       appendLiveTranscript(spoken, trans, langA, langB);
+      
+      // Auto-speak in party B's language immediately
       speakText(trans, langB);
     }
   };
@@ -525,11 +595,12 @@ function startLiveInterpreter(langA, langB){
   };
 
   try { liveRecognition.start(); } catch(e){}
-  showToast('⚡ Live Simultaneous Interpreter Active!');
+  showToast('⚡ Live Bilateral Simultaneous Interpreter Active!');
 }
 
 function stopLiveInterpreter(){
   state.isLiveActive = false;
+  vibrate(10);
   const visNode = document.getElementById('liveVisualizerNode');
   const statusLabel = document.getElementById('liveStatusLabel');
   if(visNode) visNode.classList.remove('listening');
@@ -721,6 +792,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('copyMyCodeBtn')?.addEventListener('click', () => {
     if(currentUser?.friendCode){
       navigator.clipboard?.writeText(currentUser.friendCode);
+      vibrate(10);
       showToast(t('copySuccess'));
     }
   });

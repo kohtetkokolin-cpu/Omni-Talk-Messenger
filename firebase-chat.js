@@ -272,17 +272,23 @@ async function translateMessageOnRead(rawText, sourceLang, targetLang){
 
   try{
     let translated = '';
-    // Tier 1: Gemini AI Translation with Multi-Model & Domain support
-    if(typeof state !== 'undefined' && state.apiKey){
-      translated = await callGeminiTranslate(rawText, sourceLang, targetLang, state.apiKey, state.aiModel, state.aiDomain);
-    } 
-    // Tier 2: MyMemory Cloud Fallback
-    if(!translated){
-      translated = await callMyMemoryTranslate(rawText, sourceLang, targetLang);
+    const key = (typeof state !== 'undefined' && state.apiKey) ? state.apiKey : '';
+    const model = (typeof state !== 'undefined' && state.aiModel) ? state.aiModel : 'gemini-2.0-flash';
+    const domain = (typeof state !== 'undefined' && state.aiDomain) ? state.aiDomain : 'general';
+
+    // Tier 1: Gemini AI Translation
+    if(key){
+      translated = await callGeminiTranslate(rawText, sourceLang, targetLang, key, model, domain);
     }
-    // Tier 3: Offline Dictionary Phrase matching
+
+    // Tier 2: Intelligent Offline Linguistic Dictionary & Name matching
     if(!translated){
       translated = offlineDictionaryTranslate(rawText, sourceLang, targetLang);
+    }
+
+    // Tier 3: MyMemory Cloud Fallback with post-processing
+    if(!translated){
+      translated = await callMyMemoryTranslate(rawText, sourceLang, targetLang);
     }
 
     if(translated){
@@ -297,17 +303,26 @@ async function translateMessageOnRead(rawText, sourceLang, targetLang){
 
 function offlineDictionaryTranslate(text, sCode, tCode){
   const norm = (text || '').trim().toLowerCase();
+  
+  // Exact phrasebook matching
   for(const p of PHRASEBOOK){
     if(p[sCode] && p[sCode].toLowerCase() === norm){
       return p[tCode] || text;
     }
+    if(p.en && p.en.toLowerCase() === norm){
+      return p[tCode] || text;
+    }
   }
+  // Word & Name dictionary matching
   for(const p of PHRASES){
     if(p[sCode] && p[sCode].toLowerCase() === norm){
       return p[tCode] || text;
     }
+    if(p.en && p.en.toLowerCase() === norm){
+      return p[tCode] || text;
+    }
   }
-  return text;
+  return '';
 }
 
 async function callMyMemoryTranslate(text, src, tgt){
@@ -325,15 +340,30 @@ async function callMyMemoryTranslate(text, src, tgt){
 
 async function callGeminiTranslate(text, src, tgt, key, model = 'gemini-2.0-flash', domain = 'general'){
   const domainPrompts = {
-    general: 'general conversation',
-    workplace: 'workplace, factory operations, safety rules, engineering, and overtime tasks',
+    general: 'general natural human conversation',
+    workplace: 'workplace operations, factory management, engineering, and overtime tasks',
     medical: 'medical symptoms, clinics, healthcare, and pharmacy',
     immigration: 'visa, passport, work permit, and legal immigration matters'
   };
   const domainContext = domainPrompts[domain] || domainPrompts.general;
-  const prompt = `You are a high-precision real-time cross-language translator. Translate the following message from language code "${src||'auto'}" into target language code "${tgt}". Context is ${domainContext}. Keep the translation natural, fluent, and preserve technical terms, names, and emojis. Output ONLY the translated text.\n\nMessage: "${text}"`;
   
-  const chosenModel = model || 'gemini-2.0-flash';
+  const prompt = `You are an expert real-time translator specializing in Southeast Asian and East Asian languages (Burmese/Myanmar, Chinese, Thai, English).
+Translate the following input from language code "${src||'auto'}" into target language code "${tgt}".
+
+Rules:
+1. Preserve natural grammar, colloquial idioms, and polite particles (e.g. in Burmese: ခင်ဗျာ/ရှင်/နော်, in Thai: ครับ/ค่ะ).
+2. For conversational questions like "ထမင်းစားပြီးပြီလား?", translate as "Have you eaten yet?" in English, "你吃饭了吗？" in Chinese, "กินข้าวหรือยังครับ" in Thai.
+3. For personal names (e.g. "Daniel David"), transliterate phonetically (e.g. "ဒန်နီရယ် ဒေးဗစ်" in Burmese, "丹尼尔·大卫" in Chinese, "แดเนียล เดวิด" in Thai) - DO NOT translate names as verbs!
+4. Context: ${domainContext}.
+5. Output ONLY the clean translated text without any explanation, markdown or quotes.
+
+Input: "${text}"`;
+  
+  // Model mapping
+  let chosenModel = model || 'gemini-2.0-flash';
+  if(chosenModel === 'gemini-2.5-flash') chosenModel = 'gemini-2.0-flash'; // map to active flash endpoint
+  if(chosenModel === 'gemini-2.5-pro') chosenModel = 'gemini-1.5-pro';
+
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${chosenModel}:generateContent?key=${key}`;
   
   const res = await fetch(url, {

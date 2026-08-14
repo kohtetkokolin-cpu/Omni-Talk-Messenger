@@ -82,7 +82,8 @@ const PHRASEBOOK = [
   { cat: 'immigration', en: 'Where is the immigration office?', my: 'လဝက (Immigration) ရုံး ဘယ်မှာလဲခင်ဗျာ?', zh: '移民局在哪里？', th: 'สำนักงานตรวจคนเข้าเมืองอยู่ที่ไหน?' },
   { cat: 'immigration', en: 'Is this document legal and certified?', my: 'ဒီစာရွက်စာတမ်း တရားဝင် ခိုင်လုံရဲ့လားခင်ဗျာ?', zh: '这份文件合法且经过认证吗？', th: 'เอกสารนี้ถูกต้องตามกฎหมายหรือไม่?' },
 
-  // 7. Daily Essentials
+  // 7. Daily Essentials & Conversational Idioms
+  { cat: 'basics', en: 'Have you eaten rice / meal yet?', my: 'ထမင်းစားပြီးပြီလား?', zh: '你吃饭了吗？', th: 'กินข้าวหรือยังครับ/ค่ะ?' },
   { cat: 'basics', en: 'Hello / Greetings', my: 'မင်္ဂလာပါ', zh: '你好', th: 'สวัสดี' },
   { cat: 'basics', en: 'Thank you very much!', my: 'အများကြီး ကျေးဇူးတင်ပါတယ်!', zh: '非常感谢！', th: 'ขอบคุณมากครับ/ค่ะ!' },
   { cat: 'basics', en: 'I am sorry / Excuse me', my: 'တောင်းပန်ပါတယ် / ခွင့်လွှတ်ပါ', zh: '对不起 / 抱歉', th: 'ขอโทษครับ/ค่ะ' },
@@ -90,15 +91,21 @@ const PHRASEBOOK = [
   { cat: 'basics', en: 'I do not understand, please repeat slowly.', my: 'နားမလည်ပါဘူး၊ ဖြည်းဖြည်းလေး ထပ်ပြောပေးပါ။', zh: '我不明白，请慢慢重复一遍。', th: 'ไม่เข้าใจครับ กรุณาพูดช้าๆ อีกครั้ง' },
   { cat: 'basics', en: 'Where is the restroom / toilet?', my: 'အိမ်သာ ဘယ်နားမှာလဲခင်ဗျာ?', zh: '洗手间/厕所在哪里？', th: 'ห้องน้ำอยู่ที่ไหนครับ?' },
   { cat: 'basics', en: 'How much is this?', my: 'ဒါ ဘယ်လောက်ကျပါသလဲခင်ဗျာ?', zh: '这个多少钱？', th: 'อันนี้ราคาเท่าไหร่ครับ?' },
-  { cat: 'basics', en: 'Goodbye / See you later', my: 'သွားပါဦးမယ် / နောက်မှ တွေ့ကြမယ်', zh: '再见 / 回头见', th: 'ลาก่อน / ไว้เจอกันใหม่' }
+  { cat: 'basics', en: 'Goodbye / See you later', my: 'သွားပါဦးမယ် / နောက်မှ တွေ့ကြမယ်', zh: '再见 / 回头见', th: 'ลาก่อน / ไว้เจอกันใหม่' },
+  { cat: 'basics', en: 'What are you doing?', my: 'ဘာလုပ်နေတာလဲ?', zh: '你在做什么？', th: 'กำลังทำอะไรอยู่ครับ?' },
+  { cat: 'basics', en: 'Where are you going?', my: 'ဘယ်သွားမလို့လဲ?', zh: '你要去哪里？', th: 'จะไปไหนครับ?' }
 ];
 
 const PHRASES = [
+  { en: 'Daniel David', my: 'ဒန်နီရယ် ဒေးဗစ်', zh: '丹尼尔·大卫', th: 'แดเนียล เดวิด' },
+  { en: 'David', my: 'ဒေးဗစ်', zh: '大卫', th: 'เดวิด' },
+  { en: 'Daniel', my: 'ဒန်နီရယ်', zh: '丹尼尔', th: 'แดเนียล' },
+  { en: 'What are you doing', my: 'ဘာလုပ်နေတာလဲ', zh: '你在做什么', th: 'กำลังทำอะไรอยู่' },
+  { en: 'Have you eaten', my: 'ထမင်းစားပြီးပြီလား', zh: '你吃了吗', th: 'กินข้าวหรือยัง' },
   { en: 'Hello', my: 'မင်္ဂလာပါ', zh: '你好', th: 'สวัสดี' },
   { en: 'Thank you', my: 'ကျေးဇူးတင်ပါတယ်', zh: '谢谢', th: 'ขอบคุณ' },
   { en: 'Yes', my: 'ဟုတ်ကဲ့ / ဟုတ်ပါတယ်', zh: '是的', th: 'ใช่' },
   { en: 'No', my: 'မဟုတ်ပါ / မဟုတ်ဘူး', zh: '不是 / 不', th: 'ไม่ใช่' },
-  { en: 'Please', my: 'ကျေးဇူးပြု၍', zh: '请', th: 'กรุณา / โปรด' },
-  { en: 'Sorry', my: 'တောင်းပန်ပါတယ်', zh: '对不起', th: 'ขอโทษ' },
-  { en: 'Good', my: 'ကောင်းပါတယ်', zh: '很好', th: 'ดีมาก' }
+  { en: 'Please', my: 'ကျေးဇူးပြု၍', zh: '请', th: 'กรุณา' },
+  { en: 'Sorry', my: 'တောင်းပန်ပါတယ်', zh: '对不起', th: 'ขอโทษ' }
 ];
