@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>OmniTalk - Global AI Messenger &amp; Workspace</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#10B981">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="toastContainer"></div>
+
+<!-- Top Navigation Header (WeChat/DingTalk Style) -->
+<header id="wechatTopBar" class="topNavBar">
+  <div class="topNavLeft">
+    <button id="homeBtn" class="homeBackBtn" aria-label="Back">‹</button>
+    <div class="appBrandBadge">
+      <img src="icon.svg" alt="OmniTalk Logo" class="appLogoImg">
+      <h1 id="topAppTitle" class="appHeading" data-i18n="appTitle">OmniTalk</h1>
+    </div>
+  </div>
+  <div class="topNavRight">
+    <div class="topPillTag">
+      <span>🌐</span> <span id="headerTargetLang">🇲🇲 MM</span>
+    </div>
+    <button id="addFriendModalBtn" class="topIconBtn" title="Add Friend / Create Group">➕</button>
+  </div>
+</header>
+
+<!-- TAB 1: CHATS VIEW -->
+<main id="tabContentChats" class="tabContent activeTab">
+  <!-- Search Bar -->
+  <div class="searchBarWrap">
+    <input type="text" id="chatSearchInput" placeholder="Search chats &amp; friends..." data-i18n-placeholder="searchPlaceholder">
+  </div>
+  
+  <!-- My Friend Code Banner -->
+  <div class="myCodeBanner">
+    <div class="codeTextWrap">
+      <span class="codeLabel" data-i18n="myCodeLabel">My Friend Code:</span>
+      <span id="myFriendCodeDisplay" class="codeNumber">------</span>
+    </div>
+    <button id="copyMyCodeBtn" class="codeCopyBtn" title="Copy code" data-i18n="copyCode">📋 Copy</button>
+  </div>
+
+  <!-- Live Translation Banner -->
+  <div class="activeLiveTransBanner">
+    <span>⚡</span> <span data-i18n="activeTranslationBanner">AI Real-Time Cross-Language Translation Active</span>
+  </div>
+
+  <!-- Recent Chats List -->
+  <div id="recentChatsList" class="chatList"></div>
+</main>
+
+<!-- TAB 2: CONTACTS VIEW -->
+<main id="tabContentContacts" class="tabContent" style="display:none;">
+  <div class="contactActionRow" id="btnOpenAddFriend">
+    <div class="contactActionIcon">➕</div>
+    <div class="contactActionText" data-i18n="addFriend">Add Friend by Code</div>
+  </div>
+  <div class="contactActionRow" id="btnOpenCreateGroup">
+    <div class="contactActionIcon">👥</div>
+    <div class="contactActionText" data-i18n="createGroup">Create Work Group</div>
+  </div>
+  
+  <div class="sectionTitle" data-i18n="createGroupTitle">Work Groups</div>
+  <div id="groupChatsList" class="contactList"></div>
+
+  <div class="sectionTitle" data-i18n="tabContacts">Friends &amp; Contacts</div>
+  <div id="contactsList" class="contactList"></div>
+</main>
+
+<!-- TAB 3: WORKSPACE / TOOLS VIEW (DingTalk / Bento-Grid Style) -->
+<main id="tabContentTools" class="tabContent" style="display:none;">
+  <div class="homeGrid">
+    <button class="homeCard heroCard" data-view="conversation">
+      <div>
+        <div class="homeCardTitle" data-i18n="cardConversationTitle">💬 Walkie-Talkie Mode</div>
+        <div class="homeCardDesc" data-i18n="cardConversationDesc">Two-person split screen with rotated panel for physical face-to-face meetings</div>
+      </div>
+      <div class="homeCardBadge">LIVE SPLIT SCREEN</div>
+    </button>
+
+    <button class="homeCard" data-view="quick">
+      <div class="homeCardTitle" data-i18n="cardQuickTitle">🔍 Quick Translate</div>
+      <div class="homeCardDesc" data-i18n="cardQuickDesc">Translate text, voice, or camera scan instantly</div>
+    </button>
+
+    <button class="homeCard" data-view="live">
+      <div class="homeCardTitle" data-i18n="cardLiveTitle">⚡ Live Interpreter</div>
+      <div class="homeCardDesc" data-i18n="cardLiveDesc">Continuous hands-free real-time simultaneous interpretation</div>
+    </button>
+
+    <button class="homeCard heroCard" data-view="phrasebook" style="grid-column: span 2;">
+      <div class="homeCardTitle" data-i18n="cardPhrasebookTitle">📋 Survival &amp; Work Phrasebook</div>
+      <div class="homeCardDesc" data-i18n="cardPhrasebookDesc">120+ verified audio phrases across work, medical, emergency, and immigration</div>
+    </button>
+  </div>
+</main>
+
+<!-- TAB 4: SETTINGS VIEW -->
+<main id="tabContentSettings" class="tabContent" style="display:none;">
+  <!-- Profile Summary -->
+  <div class="settingsCard" style="display:flex; align-items:center; gap:12px;">
+    <div class="avatarCircle" id="settingsProfileAvatar">HK</div>
+    <div>
+      <div id="settingsProfileName" style="font-size:16px; font-weight:800;">My Account</div>
+      <div id="settingsProfileCode" style="font-size:13px; color:var(--primary);">Friend ID: ------</div>
+    </div>
+  </div>
+
+  <!-- UI Language -->
+  <div class="settingsCard">
+    <label class="fieldLabel" data-i18n="uiLanguageLabel">App Interface Language (စနစ်သုံး ဘာသာစကား):</label>
+    <select id="uiLangSelect" class="settingsSelect">
+      <option value="my">🇲🇲 မြန်မာစာ (Myanmar)</option>
+      <option value="en">🇺🇸 English (US)</option>
+      <option value="zh">🇨🇳 中文 (Chinese)</option>
+      <option value="th">🇹🇭 ไทย (Thai)</option>
+    </select>
+  </div>
+
+  <!-- AI Engine & API Key -->
+  <div class="settingsCard">
+    <label class="fieldLabel" data-i18n="aiEngineLabel">Google Gemini AI Engine &amp; API Key:</label>
+    <input type="password" id="apiKeyInput" class="settingsInput" placeholder="AIzaSy... (optional for offline mode)">
+    <div class="fieldHint">For highest translation quality &amp; AI voice transcription, enter key from <a href="https://aistudio.google.com/apikey" target="_blank">Google AI Studio</a>.</div>
+  </div>
+
+  <!-- Auto-Translate Switches -->
+  <div class="settingsCard">
+    <div class="settingToggleRow">
+      <span class="settingToggleLabel" data-i18n="autoTranslateLabel">Auto-Translate Incoming Chats</span>
+      <input type="checkbox" id="autoTranslateToggle" checked style="width:20px; height:20px; accent-color:var(--primary);">
+    </div>
+    <div class="settingToggleRow" style="border-top:1px solid var(--surface-border); margin-top:8px; padding-top:8px;">
+      <span class="settingToggleLabel" data-i18n="autoTranscribeLabel">Auto-Transcribe Voice Notes</span>
+      <input type="checkbox" id="autoTranscribeToggle" checked style="width:20px; height:20px; accent-color:var(--primary);">
+    </div>
+  </div>
+
+  <!-- Firebase Status -->
+  <div class="settingsCard">
+    <label class="fieldLabel">Cloud Synchronization Status:</label>
+    <div style="color:var(--primary); font-size:13.5px; font-weight:700;">● Connected / Live Sync Ready</div>
+    <div class="fieldHint">Real-time cross-device chats powered by Firebase &amp; Gemini AI.</div>
+  </div>
+</main>
+
+<!-- ACTIVE CHAT ROOM (WeChat / DingTalk Multi-lingual Room) -->
+<section id="chatRoomView" class="chatRoomOverlay" style="display:none;">
+  <div class="chatRoomHeader">
+    <button id="closeChatRoomBtn" class="chatBackBtn">‹</button>
+    <div class="chatRoomHeaderInfo">
+      <div id="activeChatTitle" class="chatHeaderTitle">Chat Room</div>
+      <div class="readingLangSelectWrap">
+        <span class="readingLangTag" data-i18n="translateTarget">Reading in:</span>
+        <select id="chatReadingLangSelect" class="readingLangSelect">
+          <option value="my">🇲🇲 မြန်မာ (Myanmar)</option>
+          <option value="en">🇺🇸 English</option>
+          <option value="zh">🇨🇳 中文 (Chinese)</option>
+          <option value="th">🇹🇭 ไทย (Thai)</option>
+          <option value="ja">🇯🇵 日本語 (Japanese)</option>
+          <option value="ko">🇰🇷 한국어 (Korean)</option>
+          <option value="vi">🇻🇳 Tiếng Việt</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <div id="chatMessagesContainer" class="chatRoomMessages"></div>
+  <div class="chatRoomInputBar">
+    <button id="chatVoiceToggleBtn" class="chatToolBtn" title="Hold to talk">🎙️</button>
+    <textarea id="chatTextInput" rows="1" placeholder="Type message in any language..." data-i18n-placeholder="typeMessagePlaceholder"></textarea>
+    <button id="chatAttachBtn" class="chatToolBtn" title="Send file/photo">📎</button>
+    <button id="chatSendMsgBtn" class="chatSendBtn">➤</button>
+    <input type="file" id="chatFileInput" style="display:none;" accept="image/*,.pdf,.doc,.docx,.txt">
+  </div>
+</section>
+
+<!-- MODAL: ADD FRIEND -->
+<div id="addFriendModal" class="appModalOverlay">
+  <div class="appModalCard">
+    <h3 data-i18n="addFriendTitle">Add Friend by Code</h3>
+    <input type="text" id="friendCodeInput" class="modalInput" placeholder="Enter 6-digit code" maxlength="8">
+    <div class="modalActions">
+      <button class="btnGhost modalCancelBtn" data-i18n="btnCancel">Cancel</button>
+      <button id="confirmAddFriendBtn" class="btnPrimary" data-i18n="btnAdd">Add Friend</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: CREATE GROUP -->
+<div id="createGroupModal" class="appModalOverlay">
+  <div class="appModalCard">
+    <h3 data-i18n="createGroupTitle">Create Work Group</h3>
+    <input type="text" id="groupNameInput" class="modalInput" placeholder="e.g. Global Tech Team" data-i18n-placeholder="groupNamePlaceholder">
+    <div class="fieldLabel" data-i18n="selectMembers" style="margin-top:10px;">Select Members:</div>
+    <div id="groupMembersChecklist" class="contactList" style="max-height:160px; overflow-y:auto; margin-bottom:12px;"></div>
+    <div class="modalActions">
+      <button class="btnGhost modalCancelBtn" data-i18n="btnCancel">Cancel</button>
+      <button id="confirmCreateGroupBtn" class="btnPrimary" data-i18n="btnCreate">Create Group</button>
+    </div>
+  </div>
+</div>
+
+<!-- WORKSPACE PANELS (Walkie-Talkie Split Panels, Quick, Live) -->
+<div id="panelA" class="panel" style="display:none;"></div>
+<div id="divider" style="display:none;">
+  <div id="dividerBadge"><span>OmniTalk Channel</span></div>
+</div>
+<div id="panelB" class="panel" style="display:none;"></div>
+
+<div id="quickPanel" style="display:none;">
+  <div class="qtHeader">
+    <label>Translate into</label>
+    <select id="qtTargetLang" class="qtLangSelect"></select>
+  </div>
+  <div id="qtHistory"><div class="qtEmpty">Type, speak, or scan a document to translate instantly.</div></div>
+  <div class="qtInputDock">
+    <textarea id="qtInput" rows="1" placeholder="Type text to translate..."></textarea>
+    <button id="qtSendBtn" class="sendBtn">➤</button>
+  </div>
+</div>
+
+<div id="livePanel" style="display:none;">
+  <div id="liveTranscript"><div class="qtEmpty">⚡ Live Simultaneous Interpreter ready. Start speaking.</div></div>
+  <div class="liveControlDock">
+    <button id="liveStartBtn" class="liveBigCircle">⚡</button>
+  </div>
+</div>
+
+<!-- BOTTOM NAVIGATION TAB BAR (WeChat / DingTalk Style) -->
+<nav id="mainTabBar" class="bottomTabBar">
+  <button class="navTabBtn active" data-tab="chats">
+    <span class="tabIcon">💬</span>
+    <span class="tabLabel" data-i18n="tabChats">Chats</span>
+  </button>
+  <button class="navTabBtn" data-tab="contacts">
+    <span class="tabIcon">👥</span>
+    <span class="tabLabel" data-i18n="tabContacts">Contacts</span>
+  </button>
+  <button class="navTabBtn" data-tab="tools">
+    <span class="tabIcon">⚡</span>
+    <span class="tabLabel" data-i18n="tabTools">Workspace</span>
+  </button>
+  <button class="navTabBtn" data-tab="settings">
+    <span class="tabIcon">⚙️</span>
+    <span class="tabLabel" data-i18n="tabSettings">Settings</span>
+  </button>
+</nav>
+
+<!-- Scripts -->
+<script src="data.js"></script>
+<script src="i18n.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="firebase-chat.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
