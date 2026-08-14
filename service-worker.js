@@ -1,5 +1,5 @@
-// Polyglot Messenger & Translator — Service Worker
-const CACHE_VERSION = 'polyglot-v1.0';
+// OmniTalk — Service Worker (Network-First Strategy for Instant Live Updates)
+const CACHE_VERSION = 'omnitalk-v6-live';
 
 const SHELL_FILES = [
   './',
@@ -15,10 +15,9 @@ const SHELL_FILES = [
 ];
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_VERSION)
-      .then((cache) => cache.addAll(SHELL_FILES))
-      .then(() => self.skipWaiting())
+    caches.open(CACHE_VERSION).then((cache) => cache.addAll(SHELL_FILES))
   );
 });
 
@@ -30,21 +29,20 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Network-First: Always fetch latest from server, fallback to cache offline
 self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
-  if(url.origin !== self.location.origin || event.request.method !== 'GET'){
-    return;
-  }
+  if (event.request.method !== 'GET') return;
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const network = fetch(event.request).then((resp) => {
-        if(resp && resp.ok){
-          const copy = resp.clone();
-          caches.open(CACHE_VERSION).then((cache) => cache.put(event.request, copy));
+    fetch(event.request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_VERSION).then((cache) => {
+            cache.put(event.request, responseClone);
+          });
         }
-        return resp;
-      }).catch(() => cached);
-      return cached || network;
-    })
+        return networkResponse;
+      })
+      .catch(() => caches.match(event.request))
   );
 });
