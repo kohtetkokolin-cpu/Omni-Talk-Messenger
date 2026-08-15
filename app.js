@@ -1,15 +1,15 @@
 /* ==========================================================
-   OmniTalk PRO v15.0 — app.js
+   OmniTalk PRO v10.0 — app.js
    Application Controller & Workspace Tools Manager
    Features:
-   - Universal API Key Model Discovery & Verification
-   - Walkie-Talkie Dual Panel with [🎙️ Speak] & [➤ Send & Translate]
-   - Live Bilateral Simultaneous Voice-to-Voice Interpreter with Audio Out
-   - Cloud Neural Audio Player (Works on all mobile devices)
-   - Real-time Engine Tagging (Gemini AI vs Google Neural)
+   - Live Gemini Voice & Cloud Neural TTS Audio Playback
+   - API Key Test & Verification with Live Status Badge
+   - Walkie-Talkie Face-to-Face PTT with GBoard-style Live Streaming
+   - Gemini Live Bilateral Simultaneous Voice-to-Voice Interpreter
+   - Force Cache Wipe & Reload Control
 ========================================================== */
 
-const APP_VERSION = 'PRO v15.0.0 (Build 2026.08.15.15)';
+const APP_VERSION = 'PRO v10.1.0 (Build 2026.08.15.11)';
 
 const state = {
   activeTab: 'chats',
@@ -17,8 +17,11 @@ const state = {
   langA: typeof langByCode === 'function' ? langByCode('en') : { code:'en', name:'English', flag:'🇺🇸', ttsLocale:'en-US' },
   langB: typeof langByCode === 'function' ? langByCode('my') : { code:'my', name:'Myanmar', flag:'🇲🇲', ttsLocale:'my-MM' },
   messages: [],
-  apiKey: '',
-  aiModel: 'gemini-1.5-flash',
+  apiKey: '', // kept for back-compat reads; source of truth is apiKeys[apiKeyIndex]
+  apiKeys: ['', '', ''],
+  apiKeyIndex: 0,
+  exhaustedKeysToday: {},
+  aiModel: 'gemini-3.6-flash',
   aiDomain: 'general',
   uiLanguage: 'my',
   autoTranslate: true,
@@ -125,7 +128,7 @@ function escapeHtml(str){
 }
 
 /* =========================================================
-   AUDIO & CLOUD NEURAL TTS ENGINE
+   HIGH-ACCURACY AUDIO & CLOUD TTS ENGINE
 ========================================================= */
 let globalAudioPlayer = null;
 
@@ -186,55 +189,45 @@ function fallbackWebSpeechTTS(text, langCode){
 }
 
 /* =========================================================
-   GEMINI API KEY TEST & VERIFICATION (Universal Endpoint Discovery)
+   GEMINI API KEY TEST & VERIFICATION
 ========================================================= */
 async function testGeminiApiKey(key){
   const badge = document.getElementById('apiKeyStatusBadge');
   if(!badge) return false;
 
-  const testKey = (key || '').trim().replace(/^["']|["']$/g, '');
+  const testKey = (key || '').trim();
   if(!testKey){
-    badge.textContent = 'Status: No Key Entered (Using Neural Fallback)';
+    badge.textContent = 'Status: No Key Entered (Using MyMemory/Offline Fallback)';
     badge.style.color = '#94A3B8';
     return false;
   }
 
   badge.innerHTML = '<span style="color:#38BDF8;">⏳ Testing Gemini API connection...</span>';
 
-  // 1. Direct Model Discovery API (Works with any valid Google AI Studio Key)
   try {
-    const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${testKey}`;
-    const listRes = await fetch(listUrl);
-    if(listRes.ok){
-      badge.innerHTML = '<span style="color:#34D399; font-weight:800;">✅ Connected to Google Gemini AI (Ready)</span>';
-      showToast('✅ Gemini API Key verified and ready!', 'success');
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${testKey}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: 'Hello' }] }],
+        generationConfig: { temperature: 0.1 }
+      })
+    });
+
+    if(res.ok){
+      badge.innerHTML = '<span style="color:#34D399; font-weight:800;">✅ Active &amp; Verified! (Gemini 3.6 Connected)</span>';
+      showToast('✅ Gemini API Key verified and active!', 'success');
       return true;
     } else {
-      const errData = await listRes.json().catch(() => ({}));
-      const msg = errData?.error?.message || 'Invalid API Key';
-      badge.innerHTML = `<span style="color:#EF4444; font-weight:800;">❌ Error: ${escapeHtml(msg.slice(0, 50))}</span>`;
+      const errData = await res.json();
+      const msg = errData?.error?.message || 'Invalid Key / Permission Denied';
+      badge.innerHTML = `<span style="color:#EF4444; font-weight:800;">❌ Error: ${escapeHtml(msg.slice(0, 45))}</span>`;
       showToast('API Key Error: ' + msg.slice(0, 40), 'error');
       return false;
     }
   } catch(err){
-    // 2. Direct Content Test Fallback
-    try {
-      const testUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${testKey}`;
-      const testRes = await fetch(testUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: 'Hi' }] }],
-          generationConfig: { temperature: 0.1 }
-        })
-      });
-      if(testRes.ok){
-        badge.innerHTML = '<span style="color:#34D399; font-weight:800;">✅ Connected to Google Gemini AI (Ready)</span>';
-        showToast('✅ Gemini API Key verified!', 'success');
-        return true;
-      }
-    } catch(e){}
-    badge.innerHTML = '<span style="color:#EF4444; font-weight:800;">❌ Error: Network / Invalid API Key</span>';
+    badge.innerHTML = '<span style="color:#EF4444; font-weight:800;">❌ Network / Key Verification Failed</span>';
     return false;
   }
 }
@@ -325,7 +318,7 @@ function closeWorkspaceTool(handleHistory = true){
 }
 
 /* =========================================================
-   1. WALKIE-TALKIE DUAL PANEL WITH [SPEAK] & [SEND]
+   1. WALKIE-TALKIE PTT & GBOARD-STYLE LIVE STREAMING
 ========================================================= */
 function initWalkieTalkieUI(){
   const selA = document.getElementById('walkieLangA');
@@ -368,103 +361,120 @@ function initWalkieTalkieUI(){
     };
   }
 
-  // Setup Panels A & B
-  setupWalkiePanelInteractions('A', 'walkieInputA', 'walkieMicA', 'walkieSendA', 'walkieClearA', 'walkieDisplayA', () => state.langA.code, () => state.langB.code, 'walkieDisplayB');
-  setupWalkiePanelInteractions('B', 'walkieInputB', 'walkieMicB', 'walkieSendB', 'walkieClearB', 'walkieDisplayB', () => state.langB.code, () => state.langA.code, 'walkieDisplayA');
+  setupWalkiePTTMic('walkieMicA', 'walkieSpeechA', () => state.langA.code, () => state.langB.code, 'walkieSpeechB');
+  setupWalkiePTTMic('walkieMicB', 'walkieSpeechB', () => state.langB.code, () => state.langA.code, 'walkieSpeechA');
 }
 
-function setupWalkiePanelInteractions(panelId, inputId, micBtnId, sendBtnId, clearBtnId, myDisplayId, getSrcLang, getTgtLang, otherDisplayId){
-  const inputEl = document.getElementById(inputId);
-  const micBtn = document.getElementById(micBtnId);
-  const sendBtn = document.getElementById(sendBtnId);
-  const clearBtn = document.getElementById(clearBtnId);
-  const myDisplay = document.getElementById(myDisplayId);
-  const otherDisplay = document.getElementById(otherDisplayId);
+/** Push-to-Talk (PTT) with Real-Time GBoard-Style Streaming */
+function setupWalkiePTTMic(btnId, myBoxId, getSrcLang, getTgtLang, otherBoxId){
+  const btn = document.getElementById(btnId);
+  const myBox = document.getElementById(myBoxId);
+  const otherBox = document.getElementById(otherBoxId);
+  if(!btn) return;
 
-  if(!sendBtn || !micBtn) return;
+  let activeRec = null;
+  let accumulatedFinal = '';
+  let isRecording = false;
 
-  // 1. Send & Translate Button Click
-  sendBtn.onclick = async () => {
+  const startPTT = (e) => {
+    if(e && e.type === 'touchstart') e.preventDefault();
+    if(isRecording) return;
+    isRecording = true;
     primeAudioOnUserGesture();
-    const text = (inputEl ? inputEl.value : '').trim();
-    if(!text){
-      showToast('စကားပြောပါ သို့မဟုတ် စာရိုက်ထည့်ပါ', 'warn');
-      return;
-    }
-    vibrate(12);
-    sendBtn.disabled = true;
-    otherDisplay.innerHTML = '<div style="color:#38BDF8; font-size:15px; font-weight:700;">⚡ AI ဖြင့် ဘာသာပြန်နေပါသည်...</div>';
-    myDisplay.innerHTML = `<div style="font-size:16px; color:#FFFFFF; font-weight:700;">"${escapeHtml(text)}"</div>`;
+    vibrate(18);
 
-    const src = getSrcLang();
-    const tgt = getTgtLang();
-    const translated = await translateMessageOnRead(text, src, tgt);
-    
-    otherDisplay.innerHTML = `
-      <div style="font-size:19px; font-weight:800; color:#34D399; margin-bottom:4px; line-height:1.4;">${escapeHtml(translated)}</div>
-      <div style="font-size:11.5px; color:#38BDF8; font-weight:700;">[${src.toUpperCase()} ➔ ${tgt.toUpperCase()}] ${state.apiKey ? '✨ Gemini AI' : '🌐 Neural Engine'}</div>
-    `;
+    btn.classList.add('active');
+    accumulatedFinal = '';
+    myBox.innerHTML = '<span style="color:#FBBF24;">🎙️ စကားပြောပါ (Listening Live)...</span>';
 
-    if(inputEl) inputEl.value = '';
-    sendBtn.disabled = false;
-
-    if(state.autoSpeakWalkie){
-      speakText(translated, tgt);
-    }
-  };
-
-  // 2. Clear Button
-  if(clearBtn){
-    clearBtn.onclick = () => {
-      if(inputEl) inputEl.value = '';
-      myDisplay.innerHTML = '<span style="color:var(--text-dim);">မိုက်နှိပ်၍ စကားပြောပါ သို့မဟုတ် စာရိုက်ပါ...</span>';
-      vibrate(8);
-    };
-  }
-
-  // 3. Voice Speech Input Button
-  micBtn.onclick = () => {
-    primeAudioOnUserGesture();
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if(!SpeechRecognition){
       const manual = prompt('စကားပြောရန် စာသားရိုက်ထည့်ပါ:');
-      if(manual && inputEl){
-        inputEl.value = manual;
-        sendBtn.click();
-      }
+      if(manual) processWalkieTranslation(manual, getSrcLang(), getTgtLang(), myBox, otherBox);
+      btn.classList.remove('active');
+      isRecording = false;
       return;
     }
 
-    const rec = new SpeechRecognition();
-    const srcCode = getSrcLang();
-    rec.lang = langByCode(srcCode)?.ttsLocale || srcCode;
-    rec.interimResults = true;
-    rec.continuous = false;
-    vibrate(15);
-    micBtn.classList.add('active');
-    myDisplay.innerHTML = '<span style="color:#FBBF24;">🎙️ နားထောင်နေပါသည် (Speak now)...</span>';
+    try {
+      activeRec = new SpeechRecognition();
+      const srcCode = getSrcLang();
+      activeRec.lang = langByCode(srcCode)?.ttsLocale || srcCode;
+      activeRec.interimResults = true;
+      activeRec.continuous = true;
 
-    rec.onresult = (e) => {
-      const spoken = e.results[0][0].transcript;
-      if(inputEl) inputEl.value = spoken;
-      myDisplay.innerHTML = `<div style="font-size:15px; color:#FBBF24; font-weight:700;">🎙️ "${escapeHtml(spoken)}"</div>`;
-      if(e.results[0].isFinal){
-        micBtn.classList.remove('active');
-        sendBtn.click();
-      }
-    };
+      activeRec.onresult = (ev) => {
+        let interim = '';
+        for(let i = ev.resultIndex; i < ev.results.length; ++i){
+          if(ev.results[i].isFinal){
+            accumulatedFinal += ev.results[i][0].transcript + ' ';
+          } else {
+            interim += ev.results[i][0].transcript;
+          }
+        }
+        const liveText = (accumulatedFinal + interim).trim();
+        if(liveText){
+          myBox.innerHTML = `<div style="font-size:15px; color:#FBBF24; font-weight:700;">🎙️ "${escapeHtml(liveText)}"</div>`;
+        }
+      };
 
-    rec.onerror = (e) => {
-      micBtn.classList.remove('active');
-      console.warn('Speech rec error:', e);
-    };
+      activeRec.onerror = (ev) => {
+        console.warn('Walkie Speech error:', ev);
+      };
 
-    rec.onend = () => {
-      micBtn.classList.remove('active');
-    };
-
-    try { rec.start(); } catch(err){}
+      activeRec.start();
+    } catch(err){
+      console.warn('Rec start error:', err);
+    }
   };
+
+  const stopPTT = async (e) => {
+    if(e && e.type === 'touchend') e.preventDefault();
+    if(!isRecording) return;
+    isRecording = false;
+    vibrate(12);
+    btn.classList.remove('active');
+
+    if(activeRec){
+      try { activeRec.stop(); } catch(err){}
+    }
+
+    const finalText = accumulatedFinal.trim();
+    if(finalText){
+      await processWalkieTranslation(finalText, getSrcLang(), getTgtLang(), myBox, otherBox);
+    } else {
+      myBox.innerHTML = '<span style="color:var(--text-dim);">မိုက်ဖိထားပြီး စကားပြောပါ...</span>';
+    }
+  };
+
+  if ('ontouchstart' in window) {
+    btn.addEventListener('touchstart', startPTT, { passive: false });
+    btn.addEventListener('touchend', stopPTT, { passive: false });
+    btn.addEventListener('touchcancel', stopPTT, { passive: false });
+  } else {
+    btn.addEventListener('mousedown', startPTT);
+    btn.addEventListener('mouseup', stopPTT);
+    btn.addEventListener('mouseleave', stopPTT);
+  }
+}
+
+async function processWalkieTranslation(text, src, tgt, myBox, otherBox){
+  myBox.innerHTML = `<div style="font-size:15px; color:#FFFFFF; font-weight:600;">"${escapeHtml(text)}"</div>`;
+  otherBox.innerHTML = '<span style="color:#38BDF8;">⚡ AI ဖြင့် ဘာသာပြန်နေပါသည်...</span>';
+
+  const renderPartial = (partial) => {
+    otherBox.innerHTML = `
+      <div style="font-size:18px; font-weight:800; color:#FFFFFF; margin-bottom:4px;">${escapeHtml(partial)}</div>
+      <div style="font-size:12px; color:#38BDF8;">[${src.toUpperCase()} ➔ ${tgt.toUpperCase()}]</div>
+    `;
+  };
+
+  const translated = await translateMessageOnRead(text, src, tgt, renderPartial);
+  renderPartial(translated);
+
+  if(state.autoSpeakWalkie){
+    speakText(translated, tgt);
+  }
 }
 
 /* =========================================================
@@ -496,7 +506,6 @@ function initQuickTranslateUI(){
   const inputArea = document.getElementById('qtInputText');
   const resultCard = document.getElementById('qtResultCard');
   const resultText = document.getElementById('qtResultText');
-  const resultEngineBadge = document.getElementById('qtEngineBadge');
 
   document.getElementById('qtPasteBtn')?.addEventListener('click', async () => {
     try {
@@ -528,11 +537,10 @@ function initQuickTranslateUI(){
     resultCard.style.display = 'block';
     resultText.innerHTML = '<span style="color:#38BDF8;">⚡ AI ဖြင့် ဘာသာပြန်နေပါသည်...</span>';
 
-    const trans = await translateMessageOnRead(text, srcSel.value, tgtSel.value);
+    const trans = await translateMessageOnRead(text, srcSel.value, tgtSel.value, (partial) => {
+      resultText.textContent = partial;
+    });
     resultText.textContent = trans;
-    if(resultEngineBadge){
-      resultEngineBadge.textContent = state.apiKey ? '✨ Gemini AI' : '🌐 Neural Engine';
-    }
 
     addQTHistory(text, trans, srcSel.value, tgtSel.value);
     if(state.autoSpeakWalkie){
@@ -618,7 +626,7 @@ function initLiveInterpreterUI(){
     selB.appendChild(new Option(langOptionLabel(l), l.code));
   });
   selA.value = 'my';
-  selB.value = 'zh';
+  selB.value = 'en';
 
   const visNode = document.getElementById('liveVisualizerNode');
 
@@ -659,7 +667,7 @@ function startLiveInterpreter(langA, langB){
       const trans = await translateMessageOnRead(spoken, langA, langB);
       appendLiveTranscript(spoken, trans, langA, langB);
       
-      // Auto-speak in target language immediately!
+      // Auto-speak out loud in target language immediately!
       speakText(trans, langB);
     }
   };
@@ -694,7 +702,7 @@ function appendLiveTranscript(spoken, translated, sLang, tLang){
   const bubble = document.createElement('div');
   bubble.className = 'liveTranscriptBubble';
   bubble.innerHTML = `
-    <div style="font-size:17px; font-weight:800; color:#34D399; margin-bottom:3px; line-height:1.4;">${escapeHtml(translated)}</div>
+    <div style="font-size:15px; font-weight:700; color:#FFFFFF; margin-bottom:2px;">${escapeHtml(translated)}</div>
     <div style="font-size:12px; color:#94A3B8;">"${escapeHtml(spoken)}" • <span style="color:#38BDF8;">${sLang.toUpperCase()} ➔ ${tLang.toUpperCase()}</span></div>
   `;
   feed.appendChild(bubble);
@@ -777,12 +785,31 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     const savedLang = localStorage.getItem('ot_uiLanguage');
     if(savedLang) state.uiLanguage = savedLang;
-    const savedKey = localStorage.getItem('ot_apiKey');
-    if(savedKey){
-      state.apiKey = savedKey;
+    const savedKeysRaw = localStorage.getItem('ot_apiKeys');
+    const savedKeyOld = localStorage.getItem('ot_apiKey');
+    const savedExhausted = localStorage.getItem('ot_exhaustedKeys');
+    if(savedExhausted){
+      try{ state.exhaustedKeysToday = JSON.parse(savedExhausted) || {}; }catch(e){}
+    }
+    if(savedKeysRaw){
+      try{
+        const parsed = JSON.parse(savedKeysRaw);
+        if(Array.isArray(parsed)) state.apiKeys = [parsed[0]||'', parsed[1]||'', parsed[2]||''];
+      }catch(e){}
+    } else if(savedKeyOld){
+      state.apiKeys = [savedKeyOld, '', ''];
+    }
+    state.apiKeyIndex = state.apiKeys.findIndex(k => k);
+    if(state.apiKeyIndex === -1) state.apiKeyIndex = 0;
+    state.apiKey = state.apiKeys[state.apiKeyIndex] || '';
+    if(state.apiKey){
       const keyInput = document.getElementById('apiKeyInput');
-      if(keyInput) keyInput.value = savedKey;
-      testGeminiApiKey(savedKey);
+      const keyInput2 = document.getElementById('apiKeyInput2');
+      const keyInput3 = document.getElementById('apiKeyInput3');
+      if(keyInput) keyInput.value = state.apiKeys[0] || '';
+      if(keyInput2) keyInput2.value = state.apiKeys[1] || '';
+      if(keyInput3) keyInput3.value = state.apiKeys[2] || '';
+      testGeminiApiKey(state.apiKey);
     }
     const savedModel = localStorage.getItem('ot_aiModel');
     if(savedModel){
@@ -860,26 +887,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Save API Key Button
   document.getElementById('btnSaveApiKey')?.addEventListener('click', async () => {
-    const keyInput = document.getElementById('apiKeyInput');
-    const val = (keyInput?.value || '').trim().replace(/^["']|["']$/g, '');
-    state.apiKey = val;
-    try { localStorage.setItem('ot_apiKey', val); } catch(err){}
-    showToast('💾 Saving API Key & verifying...', 'info');
-    await testGeminiApiKey(val);
+    const val1 = (document.getElementById('apiKeyInput')?.value || '').trim();
+    const val2 = (document.getElementById('apiKeyInput2')?.value || '').trim();
+    const val3 = (document.getElementById('apiKeyInput3')?.value || '').trim();
+    state.apiKeys = [val1, val2, val3];
+    state.apiKeyIndex = state.apiKeys.findIndex(k => k);
+    if(state.apiKeyIndex === -1) state.apiKeyIndex = 0;
+    state.apiKey = state.apiKeys[state.apiKeyIndex] || '';
+    try { localStorage.setItem('ot_apiKeys', JSON.stringify(state.apiKeys)); } catch(err){}
+    showToast('💾 Saving API Key(s) and verifying...', 'info');
+    await testGeminiApiKey(state.apiKey);
   });
 
   // Test API Key Button
   document.getElementById('btnTestApiKey')?.addEventListener('click', async () => {
-    const keyInput = document.getElementById('apiKeyInput');
-    const val = (keyInput?.value || '').trim().replace(/^["']|["']$/g, '');
+    const val = (document.getElementById('apiKeyInput')?.value || '').trim();
     await testGeminiApiKey(val);
-  });
-
-  // Toggle API Key Visibility (Show/Hide)
-  document.getElementById('btnToggleKeyVisibility')?.addEventListener('click', () => {
-    const keyInput = document.getElementById('apiKeyInput');
-    if(!keyInput) return;
-    keyInput.type = keyInput.type === 'password' ? 'text' : 'password';
   });
 
   // Copy Friend Code
@@ -986,9 +1009,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if(nameInput) nameInput.value = '';
   });
 
-  // Force Clear Cache & Reload v15.0 Button
+  // Force Clear Cache & Reload v10.0 Button
   document.getElementById('btnForceClearCache')?.addEventListener('click', async () => {
-    showToast('Clearing all caches and updating to v15.0...', 'info');
+    showToast('Clearing all caches and updating to v10.0...', 'info');
     if('caches' in window){
       try {
         const keys = await caches.keys();
@@ -1095,9 +1118,11 @@ function populateGroupMembersChecklist(){
   });
 }
 
-/* Voice Recorder Handler */
-let mediaRecorder = null;
-let audioChunks = [];
+/* Voice Recorder Handler — free on-device transcription (Web Speech API),
+   same reliable approach as the Walkie-Talkie PTT button. No audio is
+   uploaded anywhere; only the transcribed text is sent. */
+let voiceRec = null;
+let voiceAccumulatedFinal = '';
 let recordStartTime = 0;
 
 function setupVoiceRecorder(){
@@ -1110,23 +1135,34 @@ function setupVoiceRecorder(){
   voiceBtn.addEventListener('touchend', (e) => { e.preventDefault(); stopVoiceRecord(); });
 }
 
-async function startVoiceRecord(){
+function startVoiceRecord(){
   const voiceBtn = document.getElementById('chatVoiceToggleBtn');
   if(voiceBtn) voiceBtn.classList.add('recording');
   primeAudioOnUserGesture();
   showToast(t('recording'));
   recordStartTime = Date.now();
+  voiceAccumulatedFinal = '';
 
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
-    });
-    mediaRecorder = new MediaRecorder(stream);
-    audioChunks = [];
-    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-    mediaRecorder.start();
-  } catch(e){
-    console.warn('Microphone access fallback:', e);
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SpeechRecognition){
+    voiceRec = null;
+    return; // stopVoiceRecord() will prompt for manual text entry instead
+  }
+  try{
+    voiceRec = new SpeechRecognition();
+    voiceRec.lang = langByCode(state.uiLanguage)?.ttsLocale || 'my-MM';
+    voiceRec.interimResults = true;
+    voiceRec.continuous = true;
+    voiceRec.onresult = (ev) => {
+      for(let i = ev.resultIndex; i < ev.results.length; ++i){
+        if(ev.results[i].isFinal) voiceAccumulatedFinal += ev.results[i][0].transcript + ' ';
+      }
+    };
+    voiceRec.onerror = (ev) => console.warn('Voice message speech error:', ev);
+    voiceRec.start();
+  }catch(err){
+    console.warn('Voice rec start error:', err);
+    voiceRec = null;
   }
 }
 
@@ -1135,16 +1171,22 @@ async function stopVoiceRecord(){
   if(voiceBtn) voiceBtn.classList.remove('recording');
   const durationSec = Math.max(2, Math.round((Date.now() - recordStartTime) / 1000));
 
-  if(mediaRecorder && mediaRecorder.state !== 'inactive'){
-    mediaRecorder.stop();
+  const finish = async (text) => {
+    if(!text){
+      // No speech recognized (or browser doesn't support it) — ask instead
+      // of silently sending nothing or making something up.
+      text = prompt('Voice message အတွက် စာသားရိုက်ထည့်ပါ:');
+    }
+    if(text && text.trim()){
+      await fbSendAudioMessage(null, durationSec, text.trim());
+      showToast('Voice message sent & transcribed!');
+    }
+  };
+
+  if(voiceRec){
+    voiceRec.onend = () => finish(voiceAccumulatedFinal.trim());
+    try{ voiceRec.stop(); }catch(e){ finish(voiceAccumulatedFinal.trim()); }
+  } else {
+    await finish('');
   }
-  
-  const sampleVoiceTexts = [
-    "အစီရင်ခံစာကို စစ်ဆေးပြီးပါပြီ၊ အားလုံးအဆင်ပြေပါတယ်။",
-    "ဒီနေ့ ညနေ ၃ နာရီ Project Review လုပ်ကြပါမယ်။",
-    "ဖိုင်အသစ်တွေ ပို့ပေးထားပါတယ်၊ တစ်ချက်လောက် ကြည့်ပေးပါ။"
-  ];
-  const mockText = sampleVoiceTexts[Math.floor(Math.random() * sampleVoiceTexts.length)];
-  await fbSendAudioMessage(null, durationSec, mockText);
-  showToast('Voice message sent & transcribed!');
 }

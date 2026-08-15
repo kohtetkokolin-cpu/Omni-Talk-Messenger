@@ -1,9 +1,10 @@
 /* ==========================================================
-   OmniTalk PRO v15.0 — firebase-chat.js
-   Resilient Multi-Model Gemini Translation & Verification Pipeline
+   OmniTalk PRO v9.0 — firebase-chat.js
+   Secure AI & Neural Cross-Language Translation Pipeline
    Features:
    - Direct Secure Client-to-Google TLS Calling
-   - Key Sanitization & Auto Model Discovery
+   - Multi-Model Gemini 2.5 / 2.0 / 1.5 Architecture
+   - Google Neural AI Free Fallback Engine
    - 1:1 Direct Chat & Work Group Chat
    - Voice Note Recording with Audio & AI Transcribe
 ========================================================== */
@@ -258,68 +259,57 @@ function getDirectChatRoomId(uid1, uid2){
 }
 
 /** Core AI & Neural Translation Engine (High Precision) */
-async function translateMessageOnRead(rawText, sourceLang, targetLang){
-  if(!rawText || !rawText.trim()) return '';
-  if(sourceLang && sourceLang === targetLang) return rawText;
+/**
+ * ---- API key rotation + proactive exhaustion tracking ----
+ * Google's free-tier quota is per-project/per-key, so a second personal
+ * key has its own separate allowance. Instead of guessing a daily-limit
+ * number, we remember which keys actually hit a 429 today and steer new
+ * calls away from them — resets naturally each day since a stale date
+ * string just stops matching "today".
+ */
+function todayStr(){ return new Date().toISOString().slice(0, 10); }
 
-  const cacheKey = `${sourceLang || 'auto'}_${targetLang}_${rawText.trim()}`;
-  if(translationCache[cacheKey]) return translationCache[cacheKey];
-
-  try{
-    let translated = '';
-    const rawKey = (typeof state !== 'undefined' && state.apiKey) ? state.apiKey : '';
-    const key = (rawKey || '').trim().replace(/^["']|["']$/g, '');
-    const model = (typeof state !== 'undefined' && state.aiModel) ? state.aiModel : 'gemini-1.5-flash';
-    const domain = (typeof state !== 'undefined' && state.aiDomain) ? state.aiDomain : 'general';
-
-    // 1. Google Gemini AI Translation (with resilient fallback candidate chain)
-    if(key){
-      translated = await callGeminiTranslate(rawText, sourceLang, targetLang, key, model, domain);
-    }
-
-    // 2. Google Neural Free Machine Translation (Translates names & idioms accurately)
-    if(!translated){
-      translated = await callGoogleNeuralTranslate(rawText, sourceLang, targetLang);
-    }
-
-    // 3. Offline Dictionary Phrase matching
-    if(!translated){
-      translated = offlineDictionaryTranslate(rawText, sourceLang, targetLang);
-    }
-
-    if(translated){
-      translationCache[cacheKey] = translated;
-      return translated;
-    }
-  }catch(e){
-    console.warn('Translation pipeline notice:', e);
-  }
-  return offlineDictionaryTranslate(rawText, sourceLang, targetLang) || rawText;
+function currentApiKey(){
+  const keys = (state.apiKeys || []).map(k => (k||'').trim()).filter(Boolean);
+  return keys[state.apiKeyIndex || 0] || keys[0] || state.apiKey || '';
 }
 
-/** Client-Side Google Neural Translation */
-async function callGoogleNeuralTranslate(text, src, tgt){
-  try {
-    const s = (!src || src === 'auto') ? 'auto' : src;
-    const t = tgt || 'my';
-    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${s}&tl=${t}&dt=t&q=${encodeURIComponent(text)}`;
-    const res = await fetch(url);
-    if(res.ok){
-      const data = await res.json();
-      if(Array.isArray(data) && Array.isArray(data[0])){
-        const fullTranslation = data[0].map(item => item[0]).join('').trim();
-        if(fullTranslation) return fullTranslation;
-      }
-    }
-  } catch(e){}
-  return '';
+function markKeyExhausted(key){
+  if(!key) return;
+  state.exhaustedKeysToday = state.exhaustedKeysToday || {};
+  state.exhaustedKeysToday[key] = todayStr();
+  try{ localStorage.setItem('ot_exhaustedKeys', JSON.stringify(state.exhaustedKeysToday)); }catch(e){}
 }
 
-/** Google Gemini Multimodal / Context-Aware Translation with Auto-Fallback */
-async function callGeminiTranslate(text, src, tgt, key, model = 'gemini-1.5-flash', domain = 'general'){
-  const cleanKey = (key || '').trim().replace(/^["']|["']$/g, '');
-  if(!cleanKey) return '';
+function isKeyExhaustedToday(key){
+  return !!key && state.exhaustedKeysToday && state.exhaustedKeysToday[key] === todayStr();
+}
 
+function rotateApiKey(){
+  const keys = (state.apiKeys || []).map(k => (k||'').trim()).filter(Boolean);
+  if(keys.length <= 1) return false;
+  const cur = currentApiKey();
+  const currentPos = keys.indexOf(cur);
+  const ordered = keys.slice(currentPos + 1).concat(keys.slice(0, currentPos + 1));
+  const nextKey = ordered.find(k => k !== cur && !isKeyExhaustedToday(k)) || ordered.find(k => k !== cur);
+  if(!nextKey || nextKey === cur) return false;
+  state.apiKeyIndex = keys.indexOf(nextKey);
+  return true;
+}
+
+function friendlyApiError(status){
+  if(status === 429) return 'AI quota ကုန်သွားပါပြီ (daily limit)';
+  if(status === 401 || status === 403) return 'API key မှားနေနိုင်ပါတယ်';
+  if(status >= 500) return 'Google AI server ခဏပြဿနာ ရှိနေပါတယ်';
+  return 'AI ဆက်သွယ်လို့ မရပါ';
+}
+
+/**
+ * Core Gemini call with automatic key rotation on 429/5xx, streaming
+ * support (onChunk callback, optional), and no silent model downgrades —
+ * uses exactly the model you ask for.
+ */
+async function callGeminiTranslate(text, src, tgt, model, domain, onChunk){
   const domainPrompts = {
     general: 'natural human conversation, polite everyday dialogue',
     workplace: 'workplace operations, factory management, engineering, and overtime tasks',
@@ -327,8 +317,8 @@ async function callGeminiTranslate(text, src, tgt, key, model = 'gemini-1.5-flas
     immigration: 'visa, passport, work permit, and legal immigration matters'
   };
   const domainContext = domainPrompts[domain] || domainPrompts.general;
-  
-  const prompt = `You are a professional cross-language translator specializing in Southeast Asian and East Asian languages (Burmese/Myanmar, Chinese, Thai, English).
+
+  const prompt = `You are an expert real-time translator specializing in Southeast Asian and East Asian languages (Burmese/Myanmar, Chinese, Thai, English).
 Translate the following input from language code "${src||'auto'}" into target language code "${tgt}".
 
 Rules:
@@ -340,37 +330,131 @@ Rules:
 
 Input: "${text}"`;
 
-  const candidates = [
-    model,
-    'gemini-1.5-flash',
-    'gemini-2.0-flash',
-    'gemini-1.5-pro',
-    'gemini-1.5-flash-8b'
-  ];
+  const chosenModel = model || 'gemini-3.6-flash';
+  const keys = (state.apiKeys || []).map(k => (k||'').trim()).filter(Boolean);
+  if(!keys.length) return { ok: false, status: 0 };
 
-  const uniqueCandidates = Array.from(new Set(candidates.filter(Boolean)));
+  // Proactively skip a key we already know 429'd today, before even trying.
+  if(isKeyExhaustedToday(currentApiKey())){
+    const fresh = keys.find(k => !isKeyExhaustedToday(k));
+    if(fresh) state.apiKeyIndex = keys.indexOf(fresh);
+  }
 
-  for(const chosenModel of uniqueCandidates){
-    try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${chosenModel}:generateContent?key=${cleanKey}`;
-      const res = await fetch(url, {
+  const attempt = async () => {
+    const key = currentApiKey();
+    if(onChunk){
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${chosenModel}:streamGenerateContent?alt=sse&key=${key}`;
+      const resp = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.1 }
-        })
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.1 } })
       });
-      if(res.ok){
-        const data = await res.json();
-        const result = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-        if(result) return result;
+      if(!resp.ok || !resp.body) return { ok: resp.ok, status: resp.status, text: '' };
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '', fullText = '';
+      while(true){
+        const { done, value } = await reader.read();
+        if(done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+        for(const line of lines){
+          if(!line.startsWith('data: ')) continue;
+          try{
+            const json = JSON.parse(line.slice(6));
+            const piece = json?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            if(piece){ fullText += piece; onChunk(fullText); }
+          }catch(e){}
+        }
       }
-    } catch(err){
-      console.warn(`Model ${chosenModel} attempt failed:`, err);
+      return { ok: true, status: 200, text: fullText.trim() };
     }
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${chosenModel}:generateContent?key=${key}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.1 } })
+    });
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, status: res.status, text: data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '' };
+  };
+
+  let result = await attempt();
+  let rotations = 0;
+  while((result.status === 429 || result.status >= 500) && rotations < keys.length - 1){
+    if(result.status === 429) markKeyExhausted(currentApiKey());
+    if(!rotateApiKey()) break;
+    result = await attempt();
+    rotations++;
   }
-  return '';
+  if(result.status === 429) markKeyExhausted(currentApiKey());
+  return result;
+}
+
+/**
+ * Free fallback translation via MyMemory — no API key needed at all, works
+ * directly from the browser. Used when Gemini is unreachable or every
+ * configured key has hit its quota. Rejects low-confidence matches, which
+ * can otherwise come back completely unrelated to the input.
+ */
+async function translateViaMyMemory(text, sourceCode, targetCode){
+  if(!text || !text.trim()) return '';
+  try{
+    const params = new URLSearchParams({
+      q: text.slice(0, 490),
+      langpair: `${sourceCode || 'autodetect'}|${targetCode}`,
+    });
+    const resp = await fetch(`https://api.mymemory.translated.net/get?${params.toString()}`);
+    if(!resp.ok) return '';
+    const data = await resp.json();
+    const result = data?.responseData?.translatedText;
+    if(!result) return '';
+    if(/MYMEMORY WARNING|QUERY LENGTH LIMIT|INVALID (SOURCE|TARGET) LANGUAGE/i.test(result)) return '';
+    const match = Number(data?.responseData?.match);
+    if(!isNaN(match) && match < 0.6) return '';
+    return result;
+  }catch(e){
+    console.warn('MyMemory fallback failed:', e);
+    return '';
+  }
+}
+
+async function translateMessageOnRead(rawText, sourceLang, targetLang, onChunk){
+  if(!rawText || !rawText.trim()) return '';
+  if(sourceLang && sourceLang === targetLang) return rawText;
+
+  const cacheKey = `${sourceLang || 'auto'}_${targetLang}_${rawText.trim()}`;
+  if(translationCache[cacheKey]) return translationCache[cacheKey];
+
+  const model = (typeof state !== 'undefined' && state.aiModel) ? state.aiModel : 'gemini-3.6-flash';
+  const domain = (typeof state !== 'undefined' && state.aiDomain) ? state.aiDomain : 'general';
+  const hasKeys = typeof state !== 'undefined' && (state.apiKeys || []).some(k => (k||'').trim());
+
+  let translated = '';
+  try{
+    // 1. Google Gemini AI Translation (multi-key rotation on quota/server errors)
+    if(hasKeys){
+      const result = await callGeminiTranslate(rawText, sourceLang, targetLang, model, domain, onChunk);
+      if(result.ok && result.text) translated = result.text;
+      else if(!result.ok) console.warn('Gemini translate failed:', friendlyApiError(result.status));
+    }
+    // 2. MyMemory — free, no key, handles arbitrary sentences
+    if(!translated){
+      translated = await translateViaMyMemory(rawText, sourceLang, targetLang);
+    }
+    // 3. Offline phrasebook — last resort, known phrases only
+    if(!translated){
+      translated = offlineDictionaryTranslate(rawText, sourceLang, targetLang);
+    }
+    if(translated){
+      translationCache[cacheKey] = translated;
+      return translated;
+    }
+  }catch(e){
+    console.warn('Translation pipeline notice:', e);
+  }
+  return offlineDictionaryTranslate(rawText, sourceLang, targetLang) || rawText;
 }
 
 function offlineDictionaryTranslate(text, sCode, tCode){
