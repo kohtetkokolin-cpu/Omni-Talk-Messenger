@@ -1,10 +1,10 @@
 /* ==========================================================
-   OmniTalk PRO v12.0 — firebase-chat.js
-   Secure AI & Neural Cross-Language Translation Pipeline
+   OmniTalk PRO v13.0 — firebase-chat.js
+   Stable Gemini 1.5 / 2.0 Flash & Neural Cross-Language Translation Pipeline
    Features:
    - Direct Secure Client-to-Google TLS Calling
-   - Multi-Model Gemini 3.6 / 2.5 / 2.0 / 1.5 Architecture
-   - Google Neural AI Free Fallback Engine
+   - Stable Gemini 1.5 Flash / Pro / 2.0 Flash Exp
+   - Real-time Engine Tagging (Gemini AI vs Google Neural)
    - 1:1 Direct Chat & Work Group Chat
    - Voice Note Recording with Audio & AI Transcribe
 ========================================================== */
@@ -269,7 +269,7 @@ async function translateMessageOnRead(rawText, sourceLang, targetLang){
   try{
     let translated = '';
     const key = (typeof state !== 'undefined' && state.apiKey) ? state.apiKey : '';
-    const model = (typeof state !== 'undefined' && state.aiModel) ? state.aiModel : 'gemini-3.6-flash';
+    const model = (typeof state !== 'undefined' && state.aiModel) ? state.aiModel : 'gemini-1.5-flash';
     const domain = (typeof state !== 'undefined' && state.aiDomain) ? state.aiDomain : 'general';
 
     // 1. Google Gemini AI Translation (Direct TLS with User's key)
@@ -315,8 +315,8 @@ async function callGoogleNeuralTranslate(text, src, tgt){
   return '';
 }
 
-/** Google Gemini Multimodal / Context-Aware Translation */
-async function callGeminiTranslate(text, src, tgt, key, model = 'gemini-3.6-flash', domain = 'general'){
+/** Google Gemini Stable Translation Endpoint */
+async function callGeminiTranslate(text, src, tgt, key, model = 'gemini-1.5-flash', domain = 'general'){
   const domainPrompts = {
     general: 'natural human conversation, polite everyday dialogue',
     workplace: 'workplace operations, factory management, engineering, and overtime tasks',
@@ -325,7 +325,7 @@ async function callGeminiTranslate(text, src, tgt, key, model = 'gemini-3.6-flas
   };
   const domainContext = domainPrompts[domain] || domainPrompts.general;
   
-  const prompt = `You are an expert real-time translator specializing in Southeast Asian and East Asian languages (Burmese/Myanmar, Chinese, Thai, English).
+  const prompt = `You are a professional cross-language translator specializing in Southeast Asian and East Asian languages (Burmese/Myanmar, Chinese, Thai, English).
 Translate the following input from language code "${src||'auto'}" into target language code "${tgt}".
 
 Rules:
@@ -336,24 +336,33 @@ Rules:
 5. Output ONLY the clean translated text without any explanation, quotes or markdown.
 
 Input: "${text}"`;
-  
-  let chosenModel = model || 'gemini-3.6-flash';
-  if(chosenModel === 'gemini-3.6-flash') chosenModel = 'gemini-2.0-flash';
-  if(chosenModel === 'gemini-2.5-flash') chosenModel = 'gemini-2.0-flash';
-  if(chosenModel === 'gemini-2.5-pro') chosenModel = 'gemini-1.5-pro';
+
+  // Standard official Google Gemini API model mapping
+  let chosenModel = 'gemini-1.5-flash';
+  if(model === 'gemini-1.5-pro') chosenModel = 'gemini-1.5-pro';
+  else if(model === 'gemini-2.0-flash-exp' || model === 'gemini-2.0-flash') chosenModel = 'gemini-2.0-flash-exp';
+  else if(model === 'gemini-1.5-flash-8b') chosenModel = 'gemini-1.5-flash-8b';
+  else chosenModel = 'gemini-1.5-flash';
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${chosenModel}:generateContent?key=${key}`;
   
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.1 }
-    })
-  });
-  const data = await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.1 }
+      })
+    });
+    if(res.ok){
+      const data = await res.json();
+      return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+    }
+  } catch(e){
+    console.warn('Gemini API call failed, fallback:', e);
+  }
+  return '';
 }
 
 function offlineDictionaryTranslate(text, sCode, tCode){
