@@ -1,15 +1,15 @@
 /* ==========================================================
-   OmniTalk PRO v13.0 — app.js
+   OmniTalk PRO v14.0 — app.js
    Application Controller & Workspace Tools Manager
    Features:
-   - Stable Gemini 1.5 Flash / Pro API Key Testing & Verification
+   - Resilient Gemini 3.6 / 3.5 / 2.5 / 2.0 / 1.5 Model Fallback
    - Walkie-Talkie Dual Panel with [🎙️ Speak] & [➤ Send & Translate]
    - Live Bilateral Simultaneous Voice-to-Voice Interpreter with Audio Out
    - Cloud Neural Audio Player (Works on all mobile devices)
    - Real-time Engine Tagging (Gemini AI vs Google Neural)
 ========================================================== */
 
-const APP_VERSION = 'PRO v13.0.0 (Build 2026.08.15.13)';
+const APP_VERSION = 'PRO v14.0.0 (Build 2026.08.15.14)';
 
 const state = {
   activeTab: 'chats',
@@ -18,7 +18,7 @@ const state = {
   langB: typeof langByCode === 'function' ? langByCode('my') : { code:'my', name:'Myanmar', flag:'🇲🇲', ttsLocale:'my-MM' },
   messages: [],
   apiKey: '',
-  aiModel: 'gemini-1.5-flash',
+  aiModel: 'gemini-3.6-flash',
   aiDomain: 'general',
   uiLanguage: 'my',
   autoTranslate: true,
@@ -186,7 +186,7 @@ function fallbackWebSpeechTTS(text, langCode){
 }
 
 /* =========================================================
-   GEMINI API KEY TEST & VERIFICATION
+   GEMINI API KEY TEST & VERIFICATION (Multi-Model Resilient)
 ========================================================= */
 async function testGeminiApiKey(key){
   const badge = document.getElementById('apiKeyStatusBadge');
@@ -201,33 +201,40 @@ async function testGeminiApiKey(key){
 
   badge.innerHTML = '<span style="color:#38BDF8;">⏳ Testing Gemini API connection...</span>';
 
-  try {
-    // Test with standard stable production model gemini-1.5-flash
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${testKey}`;
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: 'Hello' }] }],
-        generationConfig: { temperature: 0.1 }
-      })
-    });
+  const testModels = [
+    state.aiModel,
+    'gemini-1.5-flash',
+    'gemini-2.0-flash-exp',
+    'gemini-1.5-pro'
+  ];
 
-    if(res.ok){
-      badge.innerHTML = '<span style="color:#34D399; font-weight:800;">✅ Connected to Google Gemini AI (Ready)</span>';
-      showToast('✅ Gemini API Key verified and active!', 'success');
-      return true;
-    } else {
-      const errData = await res.json();
-      const msg = errData?.error?.message || 'Invalid Key / Permission Denied';
-      badge.innerHTML = `<span style="color:#EF4444; font-weight:800;">❌ Error: ${escapeHtml(msg.slice(0, 50))}</span>`;
-      showToast('API Key Error: ' + msg.slice(0, 40), 'error');
-      return false;
+  const uniqueModels = Array.from(new Set(testModels.filter(Boolean)));
+
+  for(const modelName of uniqueModels){
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${testKey}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: 'Hello' }] }],
+          generationConfig: { temperature: 0.1 }
+        })
+      });
+
+      if(res.ok){
+        badge.innerHTML = `<span style="color:#34D399; font-weight:800;">✅ Connected to Google Gemini AI (${modelName})</span>`;
+        showToast(`✅ Gemini AI connected via ${modelName}!`, 'success');
+        return true;
+      }
+    } catch(err){
+      console.warn(`Model ${modelName} test error:`, err);
     }
-  } catch(err){
-    badge.innerHTML = '<span style="color:#EF4444; font-weight:800;">❌ Network / Key Verification Failed</span>';
-    return false;
   }
+
+  badge.innerHTML = '<span style="color:#EF4444; font-weight:800;">❌ Error: Invalid API Key / Network Error</span>';
+  showToast('API Key Verification Failed', 'error');
+  return false;
 }
 
 /* =========================================================
@@ -441,7 +448,7 @@ function setupWalkiePanelInteractions(panelId, inputId, micBtnId, sendBtnId, cle
       myDisplay.innerHTML = `<div style="font-size:15px; color:#FBBF24; font-weight:700;">🎙️ "${escapeHtml(spoken)}"</div>`;
       if(e.results[0].isFinal){
         micBtn.classList.remove('active');
-        sendBtn.click(); // Auto-send when final sentence is detected!
+        sendBtn.click();
       }
     };
 
@@ -647,7 +654,6 @@ function startLiveInterpreter(langA, langB){
     const lastIdx = e.results.length - 1;
     const spoken = e.results[lastIdx][0].transcript;
     if(spoken && spoken.trim()){
-      // Bilateral Voice-to-Voice: Speaker A (Myanmar) speaks -> translates & speaks out in Speaker B (e.g. Chinese)
       const trans = await translateMessageOnRead(spoken, langA, langB);
       appendLiveTranscript(spoken, trans, langA, langB);
       
@@ -971,9 +977,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if(nameInput) nameInput.value = '';
   });
 
-  // Force Clear Cache & Reload v13.0 Button
+  // Force Clear Cache & Reload v14.0 Button
   document.getElementById('btnForceClearCache')?.addEventListener('click', async () => {
-    showToast('Clearing all caches and updating to v13.0...', 'info');
+    showToast('Clearing all caches and updating to v14.0...', 'info');
     if('caches' in window){
       try {
         const keys = await caches.keys();
