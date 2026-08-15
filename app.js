@@ -203,7 +203,7 @@ async function testGeminiApiKey(key){
 
   try {
     // Test with standard stable production model gemini-1.5-flash
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${testKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${testKey}`;
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
