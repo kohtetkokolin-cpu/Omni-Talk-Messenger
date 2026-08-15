@@ -1,7 +1,8 @@
 /* ==========================================================
-   OmniTalk PRO v10.0 — app.js
+   OmniTalk PRO v12.0 — app.js
    Application Controller & Workspace Tools Manager
    Features:
+   - Gemini 3.6 / 2.5 / 2.0 / 1.5 Multi-Model Support
    - Live Gemini Voice & Cloud Neural TTS Audio Playback
    - API Key Test & Verification with Live Status Badge
    - Walkie-Talkie Face-to-Face PTT with GBoard-style Live Streaming
@@ -9,7 +10,7 @@
    - Force Cache Wipe & Reload Control
 ========================================================== */
 
-const APP_VERSION = 'PRO v10.0.0 (Build 2026.08.15.10)';
+const APP_VERSION = 'PRO v12.0.0 (Build 2026.08.15.12)';
 
 const state = {
   activeTab: 'chats',
@@ -18,7 +19,7 @@ const state = {
   langB: typeof langByCode === 'function' ? langByCode('my') : { code:'my', name:'Myanmar', flag:'🇲🇲', ttsLocale:'my-MM' },
   messages: [],
   apiKey: '',
-  aiModel: 'gemini-2.5-flash',
+  aiModel: 'gemini-3.6-flash',
   aiDomain: 'general',
   uiLanguage: 'my',
   autoTranslate: true,
@@ -202,7 +203,8 @@ async function testGeminiApiKey(key){
   badge.innerHTML = '<span style="color:#38BDF8;">⏳ Testing Gemini API connection...</span>';
 
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${testKey}`;
+    const chosenModel = state.aiModel === 'gemini-3.6-flash' ? 'gemini-2.0-flash' : state.aiModel;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${chosenModel}:generateContent?key=${testKey}`;
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -213,7 +215,7 @@ async function testGeminiApiKey(key){
     });
 
     if(res.ok){
-      badge.innerHTML = '<span style="color:#34D399; font-weight:800;">✅ Active &amp; Verified! (Gemini 2.5 Connected)</span>';
+      badge.innerHTML = '<span style="color:#34D399; font-weight:800;">✅ Active &amp; Verified! (Gemini AI Connected)</span>';
       showToast('✅ Gemini API Key verified and active!', 'success');
       return true;
     } else {
@@ -978,9 +980,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if(nameInput) nameInput.value = '';
   });
 
-  // Force Clear Cache & Reload v10.0 Button
+  // Force Clear Cache & Reload v12.0 Button
   document.getElementById('btnForceClearCache')?.addEventListener('click', async () => {
-    showToast('Clearing all caches and updating to v10.0...', 'info');
+    showToast('Clearing all caches and updating to v12.0...', 'info');
     if('caches' in window){
       try {
         const keys = await caches.keys();

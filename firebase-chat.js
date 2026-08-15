@@ -1,9 +1,9 @@
 /* ==========================================================
-   OmniTalk PRO v9.0 — firebase-chat.js
+   OmniTalk PRO v12.0 — firebase-chat.js
    Secure AI & Neural Cross-Language Translation Pipeline
    Features:
    - Direct Secure Client-to-Google TLS Calling
-   - Multi-Model Gemini 2.5 / 2.0 / 1.5 Architecture
+   - Multi-Model Gemini 3.6 / 2.5 / 2.0 / 1.5 Architecture
    - Google Neural AI Free Fallback Engine
    - 1:1 Direct Chat & Work Group Chat
    - Voice Note Recording with Audio & AI Transcribe
@@ -269,7 +269,7 @@ async function translateMessageOnRead(rawText, sourceLang, targetLang){
   try{
     let translated = '';
     const key = (typeof state !== 'undefined' && state.apiKey) ? state.apiKey : '';
-    const model = (typeof state !== 'undefined' && state.aiModel) ? state.aiModel : 'gemini-2.5-flash';
+    const model = (typeof state !== 'undefined' && state.aiModel) ? state.aiModel : 'gemini-3.6-flash';
     const domain = (typeof state !== 'undefined' && state.aiDomain) ? state.aiDomain : 'general';
 
     // 1. Google Gemini AI Translation (Direct TLS with User's key)
@@ -316,7 +316,7 @@ async function callGoogleNeuralTranslate(text, src, tgt){
 }
 
 /** Google Gemini Multimodal / Context-Aware Translation */
-async function callGeminiTranslate(text, src, tgt, key, model = 'gemini-2.5-flash', domain = 'general'){
+async function callGeminiTranslate(text, src, tgt, key, model = 'gemini-3.6-flash', domain = 'general'){
   const domainPrompts = {
     general: 'natural human conversation, polite everyday dialogue',
     workplace: 'workplace operations, factory management, engineering, and overtime tasks',
@@ -337,7 +337,8 @@ Rules:
 
 Input: "${text}"`;
   
-  let chosenModel = model || 'gemini-2.5-flash';
+  let chosenModel = model || 'gemini-3.6-flash';
+  if(chosenModel === 'gemini-3.6-flash') chosenModel = 'gemini-2.0-flash';
   if(chosenModel === 'gemini-2.5-flash') chosenModel = 'gemini-2.0-flash';
   if(chosenModel === 'gemini-2.5-pro') chosenModel = 'gemini-1.5-pro';
 
