@@ -1,5 +1,5 @@
 /* ==========================================================
-   OmniTalk PRO v8.0 — data.js
+   OmniTalk PRO v10.0 — data.js
    Languages, phrasebooks, offline dictionaries, vocabulary.
 ========================================================== */
 
@@ -88,7 +88,7 @@ const PHRASEBOOK = [
   { cat: 'basics', en: 'Thank you very much!', my: 'အများကြီး ကျေးဇူးတင်ပါတယ်!', zh: '非常感谢！', th: 'ขอบคุณมากครับ/ค่ะ!' },
   { cat: 'basics', en: 'I am sorry / Excuse me', my: 'တောင်းပန်ပါတယ် / ခွင့်လွှတ်ပါ', zh: '对不起 / 抱歉', th: 'ขอโทษครับ/ค่ะ' },
   { cat: 'basics', en: 'I understand clearly.', my: 'သေချာ နားလည်ပါပြီ။', zh: '我清楚明白了。', th: 'เข้าใจชัดเจนแล้วครับ' },
-  { cat: 'basics', en: 'I do not understand, please repeat slowly.', my: 'နားမလည်ပါဘူး၊ ဖြည်းဖြည်းလေး ထပ်ပြောပေးပါ။', zh: '我不明白，请慢慢重复一遍。', th: 'ไม่เข้าใจครับ กรุณาพูดช้าๆ อีกครั้ง' },
+  { cat: 'basics', en: 'I do not understand, please repeat slowly.', my: 'နားမလည်ပါဘူး၊ ဖြည်းဖြည်းလေး ထပ်ပြောပေးပါ။', zh: '我不明白，请慢慢重复一遍。', th: 'ไม่เข้าใจครับ กรุณာพูดช้าๆ อีกครั้ง' },
   { cat: 'basics', en: 'Where is the restroom / toilet?', my: 'အိမ်သာ ဘယ်နားမှာလဲခင်ဗျာ?', zh: '洗手间/厕所在哪里？', th: 'ห้องน้ำอยู่ที่ไหนครับ?' },
   { cat: 'basics', en: 'How much is this?', my: 'ဒါ ဘယ်လောက်ကျပါသလဲခင်ဗျာ?', zh: '这个多少钱？', th: 'อันนี้ราคาเท่าไหร่ครับ?' },
   { cat: 'basics', en: 'Goodbye / See you later', my: 'သွားပါဦးမယ် / နောက်မှ တွေ့ကြမယ်', zh: '再见 / 回头见', th: 'ลาก่อน / ไว้เจอกันใหม่' },
@@ -106,6 +106,6 @@ const PHRASES = [
   { en: 'Thank you', my: 'ကျေးဇူးတင်ပါတယ်', zh: '谢谢', th: 'ขอบคุณ' },
   { en: 'Yes', my: 'ဟုတ်ကဲ့ / ဟုတ်ပါတယ်', zh: '是的', th: 'ใช่' },
   { en: 'No', my: 'မဟုတ်ပါ / မဟုတ်ဘူး', zh: '不是 / 不', th: 'ไม่ใช่' },
-  { en: 'Please', my: 'ကျေးဇူးပြု၍', zh: '请', th: 'กรุณา' },
+  { en: 'Please', my: 'ကျေးဇူးပြု၍', zh: '请', th: 'กรุณာ' },
   { en: 'Sorry', my: 'တောင်းပန်ပါတယ်', zh: '对不起', th: 'ขอโทษ' }
 ];

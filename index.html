@@ -3,15 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>OmniTalk PRO v9.0 - Global AI Messenger &amp; Workspace</title>
-<link rel="manifest" href="manifest.json?v=9.0">
+<title>OmniTalk PRO v10.0 - Global AI Messenger &amp; Workspace</title>
+<link rel="manifest" href="manifest.json?v=10.0">
 <meta name="theme-color" content="#10B981">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="icon" type="image/svg+xml" href="icon.svg?v=9.0">
-<link rel="apple-touch-icon" href="icon.svg?v=9.0">
-<link rel="stylesheet" href="style.css?v=9.0">
+<link rel="icon" type="image/svg+xml" href="icon.svg?v=10.0">
+<link rel="apple-touch-icon" href="icon.svg?v=10.0">
+<link rel="stylesheet" href="style.css?v=10.0">
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(regs => {
+      for (let r of regs) r.update();
+    });
+  }
+</script>
 </head>
 <body>
 <div id="toastContainer"></div>
@@ -20,10 +27,10 @@
 <header id="wechatTopBar" class="topNavBar">
   <div class="topNavLeft">
     <div class="appBrandBadge" id="appLogoHomeBtn">
-      <img src="icon.svg?v=9.0" alt="OmniTalk Logo" class="appLogoImg">
+      <img src="icon.svg?v=10.0" alt="OmniTalk Logo" class="appLogoImg">
       <div style="display:flex; align-items:center;">
         <h1 id="topAppTitle" class="appHeading" data-i18n="appTitle">OmniTalk</h1>
-        <span class="versionBadge">PRO v9.0</span>
+        <span class="versionBadge">PRO v10.0</span>
       </div>
     </div>
   </div>
@@ -190,12 +197,19 @@
   </div>
 
   <!-- GROUP 2: AI Engine & Audio Engine -->
-  <div class="settingsGroupTitle">🤖 AI Engine &amp; Speech Configuration</div>
+  <div class="settingsGroupTitle">🤖 Google Gemini AI Engine &amp; API Key</div>
   <div class="glassCard">
-    <div style="margin-bottom:10px;">
+    <div style="margin-bottom:12px;">
       <label class="switchTitle" data-i18n="aiEngineLabel">Google Gemini AI API Key:</label>
-      <input type="password" id="apiKeyInput" class="glassInput" placeholder="AIzaSy... (optional for demo)">
-      <div class="switchDesc" style="margin-top:6px;">For real-time translation &amp; voice AI, get free key from <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--primary);">Google AI Studio</a>.</div>
+      <div style="display:flex; gap:8px; margin-top:6px;">
+        <input type="password" id="apiKeyInput" class="glassInput" placeholder="AIzaSy... (Paste Gemini Key here)" style="margin-top:0; flex:1;">
+        <button class="glassBtn primary" id="btnSaveApiKey" style="width:auto; margin-top:0; padding:0 16px; white-space:nowrap;">💾 Save Key</button>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center; margin-top:10px; flex-wrap:wrap;">
+        <button class="glassBtn" id="btnTestApiKey" style="width:auto; margin-top:0; padding:6px 14px; font-size:12px;">⚡ Test &amp; Verify Key</button>
+        <div id="apiKeyStatusBadge" class="statusPill" style="font-size:12px; font-weight:700; color:#94A3B8;">Status: Unverified</div>
+      </div>
+      <div class="switchDesc" style="margin-top:8px;">Get your free key from <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--primary); font-weight:700;">Google AI Studio</a>. Key is securely stored locally in your browser.</div>
     </div>
 
     <div style="margin-bottom:12px;">
@@ -252,7 +266,10 @@
       </label>
     </div>
 
-    <button class="glassBtn" id="btnClearChatHistory" style="margin-top:10px;">
+    <button class="glassBtn primary" id="btnForceClearCache" style="margin-top:10px; background:linear-gradient(135deg,#06B6D4,#0284C7);">
+      <span>🔄</span> <span>Force Clear Cache &amp; Reload PRO v10.0</span>
+    </button>
+    <button class="glassBtn" id="btnClearChatHistory">
       <span>🗑️</span> <span data-i18n="clearHistoryLabel">Clear Chat History &amp; Cache</span>
     </button>
     <button class="glassBtn" id="btnResetDemoData">
@@ -263,8 +280,8 @@
   <!-- GROUP 4: About & Version Status -->
   <div class="settingsGroupTitle">ℹ️ About OmniTalk PRO</div>
   <div class="glassCard" style="text-align:center;">
-    <div style="font-size:16.5px; font-weight:800; color:#FFFFFF; margin-bottom:4px;">OmniTalk PRO v9.0.0</div>
-    <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">Speak Local, Connect Global • Build 2026.08.15</div>
+    <div style="font-size:16.5px; font-weight:800; color:#FFFFFF; margin-bottom:4px;">OmniTalk PRO v10.0.0</div>
+    <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">Speak Local, Connect Global • Build 2026.08.15.10</div>
     <div style="font-size:12px; color:var(--primary); font-weight:700;">● Neural Machine Engine &amp; Gemini 2.5 Active</div>
   </div>
 </main>
@@ -275,7 +292,7 @@
 <section id="viewWalkieTalkie" style="display:none; flex-direction:column; height:100vh; background:var(--bg); z-index:120; position:fixed; top:0; left:0; right:0; bottom:0;">
   <div class="toolSubHeader">
     <button class="toolBackBtn" onclick="closeWorkspaceTool()" title="Back">‹</button>
-    <div class="toolSubTitle">💬 Walkie-Talkie မျက်နှာချင်းဆိုင် <span class="toolVersionTag">v9.0</span></div>
+    <div class="toolSubTitle">💬 Walkie-Talkie မျက်နှာချင်းဆိုင် <span class="toolVersionTag">v10.0</span></div>
     <div class="toolHeaderSpacer"></div>
   </div>
   <div class="walkieSplitContainer">
@@ -321,7 +338,7 @@
 <section id="viewQuickTranslate" style="display:none; flex-direction:column; height:100vh; background:var(--bg); z-index:120; position:fixed; top:0; left:0; right:0; bottom:0;">
   <div class="toolSubHeader">
     <button class="toolBackBtn" onclick="closeWorkspaceTool()" title="Back">‹</button>
-    <div class="toolSubTitle">🔍 အမြန်ဘာသာပြန် &amp; OCR Scan <span class="toolVersionTag">v9.0</span></div>
+    <div class="toolSubTitle">🔍 အမြန်ဘာသာပြန် &amp; OCR Scan <span class="toolVersionTag">v10.0</span></div>
     <div class="toolHeaderSpacer"></div>
   </div>
   <div class="qtContainer">
@@ -369,7 +386,7 @@
 <section id="viewLiveInterpreter" style="display:none; flex-direction:column; height:100vh; background:var(--bg); z-index:120; position:fixed; top:0; left:0; right:0; bottom:0;">
   <div class="toolSubHeader">
     <button class="toolBackBtn" onclick="closeWorkspaceTool()" title="Back">‹</button>
-    <div class="toolSubTitle">⚡ Gemini Live တိုက်ရိုက် စကားပြန် <span class="toolVersionTag">v9.0</span></div>
+    <div class="toolSubTitle">⚡ Gemini Live တိုက်ရိုက် စကားပြန် <span class="toolVersionTag">v10.0</span></div>
     <div class="toolHeaderSpacer"></div>
   </div>
   <div class="liveContainer">
@@ -396,7 +413,7 @@
 <section id="viewPhrasebook" style="display:none; flex-direction:column; height:100vh; background:var(--bg); z-index:120; position:fixed; top:0; left:0; right:0; bottom:0;">
   <div class="toolSubHeader">
     <button class="toolBackBtn" onclick="closeWorkspaceTool()" title="Back">‹</button>
-    <div class="toolSubTitle">📋 ၁၂၀+ အရေးပေါ်နှင့် လုပ်ငန်းခွင် စကားစုများ <span class="toolVersionTag">v9.0</span></div>
+    <div class="toolSubTitle">📋 ၁၂၀+ အရေးပေါ်နှင့် လုပ်ငန်းခွင် စကားစုများ <span class="toolVersionTag">v10.0</span></div>
     <div class="toolHeaderSpacer"></div>
   </div>
   <div class="phrasebookContainer">
@@ -526,14 +543,14 @@
 </nav>
 
 <!-- Scripts with Cache Busting -->
-<script src="data.js?v=9.0"></script>
-<script src="i18n.js?v=9.0"></script>
+<script src="data.js?v=10.0"></script>
+<script src="i18n.js?v=10.0"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
-<script src="firebase-config.js?v=9.0"></script>
-<script src="firebase-chat.js?v=9.0"></script>
-<script src="app.js?v=9.0"></script>
+<script src="firebase-config.js?v=10.0"></script>
+<script src="firebase-chat.js?v=10.0"></script>
+<script src="app.js?v=10.0"></script>
 </body>
 </html>

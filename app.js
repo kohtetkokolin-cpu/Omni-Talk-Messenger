@@ -1,18 +1,15 @@
 /* ==========================================================
-   OmniTalk PRO v9.0 — app.js
+   OmniTalk PRO v10.0 — app.js
    Application Controller & Workspace Tools Manager
    Features:
-   - WeChat & DingTalk Navigation with Hardware Back Button Support
-   - Real-time Multi-Language Chat & Voice Transcribe
-   - Workspace Glass Hub:
-     1. Walkie-Talkie Face-to-Face PTT with GBoard-style Live Streaming
-     2. Quick Translate & Photo Scan OCR with Gemini AI & Neural Fallback
-     3. Gemini Live Bilateral Simultaneous Voice-to-Voice Interpreter
-     4. 120+ Verified Survival & Workplace Phrasebook
-   - Mobile AudioContext Unlocking & Strict Auto-Speak Mute Control
+   - Live Gemini Voice & Cloud Neural TTS Audio Playback
+   - API Key Test & Verification with Live Status Badge
+   - Walkie-Talkie Face-to-Face PTT with GBoard-style Live Streaming
+   - Gemini Live Bilateral Simultaneous Voice-to-Voice Interpreter
+   - Force Cache Wipe & Reload Control
 ========================================================== */
 
-const APP_VERSION = 'v9.0.0 (Build 2026.08.15)';
+const APP_VERSION = 'PRO v10.0.0 (Build 2026.08.15.10)';
 
 const state = {
   activeTab: 'chats',
@@ -127,20 +124,51 @@ function escapeHtml(str){
   return d.innerHTML;
 }
 
-/** Mobile Browser AudioContext & Speech Priming */
+/* =========================================================
+   HIGH-ACCURACY AUDIO & CLOUD TTS ENGINE
+========================================================= */
+let globalAudioPlayer = null;
+
 function primeAudioOnUserGesture(){
   if(window.speechSynthesis){
-    try {
-      window.speechSynthesis.resume();
-    } catch(e){}
+    try { window.speechSynthesis.resume(); } catch(e){}
   }
 }
 
-/** Text-to-Speech (TTS) Voice Player with Multi-Language Support */
+/** Master Voice TTS Player (Cloud Neural Audio + Web Speech API) */
 function speakText(text, langCode){
-  if(!text || !window.speechSynthesis) return;
+  if(!text || !text.trim()) return;
+  const clean = text.trim();
+  const sLang = langCode || 'my';
+
+  if(globalAudioPlayer){
+    try { globalAudioPlayer.pause(); globalAudioPlayer = null; } catch(e){}
+  }
+  if(window.speechSynthesis){
+    try { window.speechSynthesis.cancel(); } catch(e){}
+  }
+
+  // Cloud Neural Audio Stream (Instant human-like voice for Myanmar, Thai, Chinese, English)
+  const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${sLang}&client=tw-ob&q=${encodeURIComponent(clean.slice(0, 200))}`;
+  
   try {
-    window.speechSynthesis.cancel();
+    globalAudioPlayer = new Audio(ttsUrl);
+    globalAudioPlayer.playbackRate = state.voiceSpeed || 1.0;
+    
+    globalAudioPlayer.play().then(() => {
+      console.log('Playing Cloud TTS audio for:', sLang);
+    }).catch(err => {
+      console.warn('Cloud audio blocked by autoplay, using WebSpeech fallback:', err);
+      fallbackWebSpeechTTS(clean, sLang);
+    });
+  } catch(e) {
+    fallbackWebSpeechTTS(clean, sLang);
+  }
+}
+
+function fallbackWebSpeechTTS(text, langCode){
+  if(!window.speechSynthesis) return;
+  try {
     window.speechSynthesis.resume();
     const ut = new SpeechSynthesisUtterance(text);
     const langObj = langByCode(langCode);
@@ -153,10 +181,51 @@ function speakText(text, langCode){
       const match = voices.find(v => v.lang.startsWith(targetLocale.slice(0, 2)) || v.lang.startsWith(langCode));
       if(match) ut.voice = match;
     }
-
     window.speechSynthesis.speak(ut);
-  } catch(e){
-    console.warn('TTS playback notice:', e);
+  } catch(e){}
+}
+
+/* =========================================================
+   GEMINI API KEY TEST & VERIFICATION
+========================================================= */
+async function testGeminiApiKey(key){
+  const badge = document.getElementById('apiKeyStatusBadge');
+  if(!badge) return false;
+
+  const testKey = (key || '').trim();
+  if(!testKey){
+    badge.textContent = 'Status: No Key Entered (Using Neural Fallback)';
+    badge.style.color = '#94A3B8';
+    return false;
+  }
+
+  badge.innerHTML = '<span style="color:#38BDF8;">⏳ Testing Gemini API connection...</span>';
+
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${testKey}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: 'Hello' }] }],
+        generationConfig: { temperature: 0.1 }
+      })
+    });
+
+    if(res.ok){
+      badge.innerHTML = '<span style="color:#34D399; font-weight:800;">✅ Active &amp; Verified! (Gemini 2.5 Connected)</span>';
+      showToast('✅ Gemini API Key verified and active!', 'success');
+      return true;
+    } else {
+      const errData = await res.json();
+      const msg = errData?.error?.message || 'Invalid Key / Permission Denied';
+      badge.innerHTML = `<span style="color:#EF4444; font-weight:800;">❌ Error: ${escapeHtml(msg.slice(0, 45))}</span>`;
+      showToast('API Key Error: ' + msg.slice(0, 40), 'error');
+      return false;
+    }
+  } catch(err){
+    badge.innerHTML = '<span style="color:#EF4444; font-weight:800;">❌ Network / Key Verification Failed</span>';
+    return false;
   }
 }
 
@@ -304,8 +373,8 @@ function setupWalkiePTTMic(btnId, myBoxId, getSrcLang, getTgtLang, otherBoxId){
   let accumulatedFinal = '';
   let isRecording = false;
 
-  const startPTT = async (e) => {
-    if(e) e.preventDefault();
+  const startPTT = (e) => {
+    if(e && e.type === 'touchstart') e.preventDefault();
     if(isRecording) return;
     isRecording = true;
     primeAudioOnUserGesture();
@@ -328,7 +397,7 @@ function setupWalkiePTTMic(btnId, myBoxId, getSrcLang, getTgtLang, otherBoxId){
       activeRec = new SpeechRecognition();
       const srcCode = getSrcLang();
       activeRec.lang = langByCode(srcCode)?.ttsLocale || srcCode;
-      activeRec.interimResults = true; // Real-time word-by-word streaming!
+      activeRec.interimResults = true;
       activeRec.continuous = true;
 
       activeRec.onresult = (ev) => {
@@ -357,7 +426,7 @@ function setupWalkiePTTMic(btnId, myBoxId, getSrcLang, getTgtLang, otherBoxId){
   };
 
   const stopPTT = async (e) => {
-    if(e) e.preventDefault();
+    if(e && e.type === 'touchend') e.preventDefault();
     if(!isRecording) return;
     isRecording = false;
     vibrate(12);
@@ -375,11 +444,15 @@ function setupWalkiePTTMic(btnId, myBoxId, getSrcLang, getTgtLang, otherBoxId){
     }
   };
 
-  btn.addEventListener('pointerdown', startPTT);
-  btn.addEventListener('pointerup', stopPTT);
-  btn.addEventListener('pointercancel', stopPTT);
-  btn.addEventListener('touchstart', startPTT, { passive: false });
-  btn.addEventListener('touchend', stopPTT, { passive: false });
+  if ('ontouchstart' in window) {
+    btn.addEventListener('touchstart', startPTT, { passive: false });
+    btn.addEventListener('touchend', stopPTT, { passive: false });
+    btn.addEventListener('touchcancel', stopPTT, { passive: false });
+  } else {
+    btn.addEventListener('mousedown', startPTT);
+    btn.addEventListener('mouseup', stopPTT);
+    btn.addEventListener('mouseleave', stopPTT);
+  }
 }
 
 async function processWalkieTranslation(text, src, tgt, myBox, otherBox){
@@ -392,7 +465,6 @@ async function processWalkieTranslation(text, src, tgt, myBox, otherBox){
     <div style="font-size:12px; color:#38BDF8;">[${src.toUpperCase()} ➔ ${tgt.toUpperCase()}]</div>
   `;
 
-  // Auto-speak strictly only if autoSpeakWalkie is enabled
   if(state.autoSpeakWalkie){
     speakText(translated, tgt);
   }
@@ -428,7 +500,6 @@ function initQuickTranslateUI(){
   const resultCard = document.getElementById('qtResultCard');
   const resultText = document.getElementById('qtResultText');
 
-  // Paste Text Button
   document.getElementById('qtPasteBtn')?.addEventListener('click', async () => {
     try {
       const clipText = await navigator.clipboard.readText();
@@ -442,14 +513,12 @@ function initQuickTranslateUI(){
     }
   });
 
-  // Clear Button
   document.getElementById('qtClearBtn').onclick = () => {
     inputArea.value = '';
     resultCard.style.display = 'none';
     vibrate(8);
   };
 
-  // Translate Action Button (Gemini AI Powered)
   document.getElementById('qtTranslateActionBtn').onclick = async () => {
     primeAudioOnUserGesture();
     const text = inputArea.value.trim();
@@ -485,7 +554,6 @@ function initQuickTranslateUI(){
     }
   };
 
-  // Voice Input for Quick Translate
   document.getElementById('qtMicBtn').onclick = () => {
     primeAudioOnUserGesture();
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -504,7 +572,6 @@ function initQuickTranslateUI(){
     rec.start();
   };
 
-  // Photo / Camera Scan OCR
   const camInput = document.getElementById('qtCameraFileInput');
   document.getElementById('qtCameraBtn').onclick = () => camInput.click();
   camInput.onchange = (e) => {
@@ -591,7 +658,7 @@ function startLiveInterpreter(langA, langB){
       const trans = await translateMessageOnRead(spoken, langA, langB);
       appendLiveTranscript(spoken, trans, langA, langB);
       
-      // Auto-speak in party B's language immediately
+      // Auto-speak out loud in target language immediately!
       speakText(trans, langB);
     }
   };
@@ -714,6 +781,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       state.apiKey = savedKey;
       const keyInput = document.getElementById('apiKeyInput');
       if(keyInput) keyInput.value = savedKey;
+      testGeminiApiKey(savedKey);
     }
     const savedModel = localStorage.getItem('ot_aiModel');
     if(savedModel){
@@ -789,11 +857,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     try { localStorage.setItem('ot_voiceSpeed', e.target.value); } catch(err){}
   });
 
-  // API Key Input
-  document.getElementById('apiKeyInput')?.addEventListener('change', (e) => {
-    state.apiKey = e.target.value.trim();
-    try { localStorage.setItem('ot_apiKey', state.apiKey); } catch(err){}
-    showToast('Gemini API key saved!');
+  // Save API Key Button
+  document.getElementById('btnSaveApiKey')?.addEventListener('click', async () => {
+    const keyInput = document.getElementById('apiKeyInput');
+    const val = (keyInput?.value || '').trim();
+    state.apiKey = val;
+    try { localStorage.setItem('ot_apiKey', val); } catch(err){}
+    showToast('💾 Saving API Key and verifying...', 'info');
+    await testGeminiApiKey(val);
+  });
+
+  // Test API Key Button
+  document.getElementById('btnTestApiKey')?.addEventListener('click', async () => {
+    const keyInput = document.getElementById('apiKeyInput');
+    const val = (keyInput?.value || '').trim();
+    await testGeminiApiKey(val);
   });
 
   // Copy Friend Code
@@ -900,6 +978,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     if(nameInput) nameInput.value = '';
   });
 
+  // Force Clear Cache & Reload v10.0 Button
+  document.getElementById('btnForceClearCache')?.addEventListener('click', async () => {
+    showToast('Clearing all caches and updating to v10.0...', 'info');
+    if('caches' in window){
+      try {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+      } catch(e){}
+    }
+    if('serviceWorker' in navigator){
+      try {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map(r => r.unregister()));
+      } catch(e){}
+    }
+    setTimeout(() => {
+      window.location.reload(true);
+    }, 500);
+  });
+
   // Clear Chat History
   document.getElementById('btnClearChatHistory')?.addEventListener('click', () => {
     if(confirm('Are you sure you want to clear chat history and cache?')){
@@ -966,7 +1064,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     reader.readAsDataURL(file);
   });
 
-  // Audio Voice Recording
+  // Audio Voice Recording in Chat
   setupVoiceRecorder();
 });
 

@@ -1,5 +1,5 @@
-// OmniTalk PRO v9.0 — Service Worker
-const CACHE_VERSION = 'omnitalk-pro-v9-0';
+// OmniTalk PRO v10.0 — Service Worker
+const CACHE_VERSION = 'omnitalk-pro-v10-0';
 
 const SHELL_FILES = [
   './',
@@ -29,7 +29,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Network-First: Always fetch latest from server, fallback to cache offline
+// Network-First Strategy
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   event.respondWith(
