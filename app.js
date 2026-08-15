@@ -1,15 +1,15 @@
 /* ==========================================================
-   OmniTalk PRO v14.0 — app.js
+   OmniTalk PRO v15.0 — app.js
    Application Controller & Workspace Tools Manager
    Features:
-   - Resilient Gemini 3.6 / 3.5 / 2.5 / 2.0 / 1.5 Model Fallback
+   - Universal API Key Model Discovery & Verification
    - Walkie-Talkie Dual Panel with [🎙️ Speak] & [➤ Send & Translate]
    - Live Bilateral Simultaneous Voice-to-Voice Interpreter with Audio Out
    - Cloud Neural Audio Player (Works on all mobile devices)
    - Real-time Engine Tagging (Gemini AI vs Google Neural)
 ========================================================== */
 
-const APP_VERSION = 'PRO v14.0.0 (Build 2026.08.15.14)';
+const APP_VERSION = 'PRO v15.0.0 (Build 2026.08.15.15)';
 
 const state = {
   activeTab: 'chats',
@@ -18,7 +18,7 @@ const state = {
   langB: typeof langByCode === 'function' ? langByCode('my') : { code:'my', name:'Myanmar', flag:'🇲🇲', ttsLocale:'my-MM' },
   messages: [],
   apiKey: '',
-  aiModel: 'gemini-3.6-flash',
+  aiModel: 'gemini-1.5-flash',
   aiDomain: 'general',
   uiLanguage: 'my',
   autoTranslate: true,
@@ -186,13 +186,13 @@ function fallbackWebSpeechTTS(text, langCode){
 }
 
 /* =========================================================
-   GEMINI API KEY TEST & VERIFICATION (Multi-Model Resilient)
+   GEMINI API KEY TEST & VERIFICATION (Universal Endpoint Discovery)
 ========================================================= */
 async function testGeminiApiKey(key){
   const badge = document.getElementById('apiKeyStatusBadge');
   if(!badge) return false;
 
-  const testKey = (key || '').trim();
+  const testKey = (key || '').trim().replace(/^["']|["']$/g, '');
   if(!testKey){
     badge.textContent = 'Status: No Key Entered (Using Neural Fallback)';
     badge.style.color = '#94A3B8';
@@ -201,40 +201,42 @@ async function testGeminiApiKey(key){
 
   badge.innerHTML = '<span style="color:#38BDF8;">⏳ Testing Gemini API connection...</span>';
 
-  const testModels = [
-    state.aiModel,
-    'gemini-1.5-flash',
-    'gemini-2.0-flash-exp',
-    'gemini-1.5-pro'
-  ];
-
-  const uniqueModels = Array.from(new Set(testModels.filter(Boolean)));
-
-  for(const modelName of uniqueModels){
+  // 1. Direct Model Discovery API (Works with any valid Google AI Studio Key)
+  try {
+    const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${testKey}`;
+    const listRes = await fetch(listUrl);
+    if(listRes.ok){
+      badge.innerHTML = '<span style="color:#34D399; font-weight:800;">✅ Connected to Google Gemini AI (Ready)</span>';
+      showToast('✅ Gemini API Key verified and ready!', 'success');
+      return true;
+    } else {
+      const errData = await listRes.json().catch(() => ({}));
+      const msg = errData?.error?.message || 'Invalid API Key';
+      badge.innerHTML = `<span style="color:#EF4444; font-weight:800;">❌ Error: ${escapeHtml(msg.slice(0, 50))}</span>`;
+      showToast('API Key Error: ' + msg.slice(0, 40), 'error');
+      return false;
+    }
+  } catch(err){
+    // 2. Direct Content Test Fallback
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${testKey}`;
-      const res = await fetch(url, {
+      const testUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${testKey}`;
+      const testRes = await fetch(testUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: 'Hello' }] }],
+          contents: [{ parts: [{ text: 'Hi' }] }],
           generationConfig: { temperature: 0.1 }
         })
       });
-
-      if(res.ok){
-        badge.innerHTML = `<span style="color:#34D399; font-weight:800;">✅ Connected to Google Gemini AI (${modelName})</span>`;
-        showToast(`✅ Gemini AI connected via ${modelName}!`, 'success');
+      if(testRes.ok){
+        badge.innerHTML = '<span style="color:#34D399; font-weight:800;">✅ Connected to Google Gemini AI (Ready)</span>';
+        showToast('✅ Gemini API Key verified!', 'success');
         return true;
       }
-    } catch(err){
-      console.warn(`Model ${modelName} test error:`, err);
-    }
+    } catch(e){}
+    badge.innerHTML = '<span style="color:#EF4444; font-weight:800;">❌ Error: Network / Invalid API Key</span>';
+    return false;
   }
-
-  badge.innerHTML = '<span style="color:#EF4444; font-weight:800;">❌ Error: Invalid API Key / Network Error</span>';
-  showToast('API Key Verification Failed', 'error');
-  return false;
 }
 
 /* =========================================================
@@ -859,18 +861,25 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Save API Key Button
   document.getElementById('btnSaveApiKey')?.addEventListener('click', async () => {
     const keyInput = document.getElementById('apiKeyInput');
-    const val = (keyInput?.value || '').trim();
+    const val = (keyInput?.value || '').trim().replace(/^["']|["']$/g, '');
     state.apiKey = val;
     try { localStorage.setItem('ot_apiKey', val); } catch(err){}
-    showToast('💾 Saving API Key and verifying...', 'info');
+    showToast('💾 Saving API Key & verifying...', 'info');
     await testGeminiApiKey(val);
   });
 
   // Test API Key Button
   document.getElementById('btnTestApiKey')?.addEventListener('click', async () => {
     const keyInput = document.getElementById('apiKeyInput');
-    const val = (keyInput?.value || '').trim();
+    const val = (keyInput?.value || '').trim().replace(/^["']|["']$/g, '');
     await testGeminiApiKey(val);
+  });
+
+  // Toggle API Key Visibility (Show/Hide)
+  document.getElementById('btnToggleKeyVisibility')?.addEventListener('click', () => {
+    const keyInput = document.getElementById('apiKeyInput');
+    if(!keyInput) return;
+    keyInput.type = keyInput.type === 'password' ? 'text' : 'password';
   });
 
   // Copy Friend Code
@@ -977,9 +986,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if(nameInput) nameInput.value = '';
   });
 
-  // Force Clear Cache & Reload v14.0 Button
+  // Force Clear Cache & Reload v15.0 Button
   document.getElementById('btnForceClearCache')?.addEventListener('click', async () => {
-    showToast('Clearing all caches and updating to v14.0...', 'info');
+    showToast('Clearing all caches and updating to v15.0...', 'info');
     if('caches' in window){
       try {
         const keys = await caches.keys();

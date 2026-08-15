@@ -1,10 +1,9 @@
 /* ==========================================================
-   OmniTalk PRO v14.0 — firebase-chat.js
-   Bulletproof Multi-Model Gemini 3.6 / 3.5 / 2.5 / 2.0 / 1.5 Translation Pipeline
+   OmniTalk PRO v15.0 — firebase-chat.js
+   Resilient Multi-Model Gemini Translation & Verification Pipeline
    Features:
-   - Dynamic Model Candidate Fallback Chain (Never 404s)
    - Direct Secure Client-to-Google TLS Calling
-   - Real-time Engine Tagging (Gemini AI vs Google Neural)
+   - Key Sanitization & Auto Model Discovery
    - 1:1 Direct Chat & Work Group Chat
    - Voice Note Recording with Audio & AI Transcribe
 ========================================================== */
@@ -268,11 +267,12 @@ async function translateMessageOnRead(rawText, sourceLang, targetLang){
 
   try{
     let translated = '';
-    const key = (typeof state !== 'undefined' && state.apiKey) ? state.apiKey : '';
+    const rawKey = (typeof state !== 'undefined' && state.apiKey) ? state.apiKey : '';
+    const key = (rawKey || '').trim().replace(/^["']|["']$/g, '');
     const model = (typeof state !== 'undefined' && state.aiModel) ? state.aiModel : 'gemini-1.5-flash';
     const domain = (typeof state !== 'undefined' && state.aiDomain) ? state.aiDomain : 'general';
 
-    // 1. Google Gemini AI Translation (with resilient multi-model fallback chain)
+    // 1. Google Gemini AI Translation (with resilient fallback candidate chain)
     if(key){
       translated = await callGeminiTranslate(rawText, sourceLang, targetLang, key, model, domain);
     }
@@ -317,6 +317,9 @@ async function callGoogleNeuralTranslate(text, src, tgt){
 
 /** Google Gemini Multimodal / Context-Aware Translation with Auto-Fallback */
 async function callGeminiTranslate(text, src, tgt, key, model = 'gemini-1.5-flash', domain = 'general'){
+  const cleanKey = (key || '').trim().replace(/^["']|["']$/g, '');
+  if(!cleanKey) return '';
+
   const domainPrompts = {
     general: 'natural human conversation, polite everyday dialogue',
     workplace: 'workplace operations, factory management, engineering, and overtime tasks',
@@ -337,12 +340,11 @@ Rules:
 
 Input: "${text}"`;
 
-  // Candidate models chain: tries requested model, then falls back seamlessly
   const candidates = [
     model,
     'gemini-1.5-flash',
+    'gemini-2.0-flash',
     'gemini-1.5-pro',
-    'gemini-2.0-flash-exp',
     'gemini-1.5-flash-8b'
   ];
 
@@ -350,7 +352,7 @@ Input: "${text}"`;
 
   for(const chosenModel of uniqueCandidates){
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${chosenModel}:generateContent?key=${key}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${chosenModel}:generateContent?key=${cleanKey}`;
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
