@@ -42,7 +42,14 @@ async function fbInit(){
     fbApp = firebase.apps.length ? firebase.app() : firebase.initializeApp(FIREBASE_CONFIG);
     fbAuth = firebase.auth();
     fbDb = firebase.firestore();
-    fbStorage = firebase.storage();
+    // Storage is optional — a project without Storage/Blaze enabled yet
+    // must NOT take down Auth+Firestore (which work fine on their own).
+    try{
+      if(typeof firebase.storage === 'function') fbStorage = firebase.storage();
+    }catch(storageErr){
+      console.warn('Firebase Storage not available yet (file/photo sharing disabled):', storageErr);
+      fbStorage = null;
+    }
 
     if(!fbAuth.currentUser){
       await fbAuth.signInAnonymously();
@@ -533,14 +540,31 @@ async function renderChatMessages(messages){
     } else {
       let displayText = msg.text;
       let isDifferentLang = msg.sourceLang && msg.sourceLang !== activeReadingLang;
-      
-      if(!isMine && isDifferentLang){
+      const shouldAutoTranslate = (typeof state === 'undefined' || state.autoTranslate !== false);
+
+      if(!isMine && isDifferentLang && shouldAutoTranslate){
         displayText = await translateMessageOnRead(msg.text, msg.sourceLang, activeReadingLang);
+        if(typeof state !== 'undefined' && state.autoSpeak && displayText !== msg.text){
+          speakText(displayText, activeReadingLang);
+        }
       }
 
       const textNode = document.createElement('div');
       textNode.textContent = displayText;
       bubble.appendChild(textNode);
+
+      if(!isMine && isDifferentLang && !shouldAutoTranslate){
+        const manualBtn = document.createElement('button');
+        manualBtn.className = 'origToggleBtn';
+        manualBtn.innerHTML = `🌐 ${t('translateNow') || 'Translate'}`;
+        manualBtn.onclick = async () => {
+          manualBtn.textContent = '⏳...';
+          const trResult = await translateMessageOnRead(msg.text, msg.sourceLang, activeReadingLang);
+          textNode.textContent = trResult;
+          manualBtn.remove();
+        };
+        bubble.appendChild(manualBtn);
+      }
 
       if(!isMine && isDifferentLang && displayText !== msg.text){
         const origBtn = document.createElement('button');
@@ -658,6 +682,7 @@ function triggerDemoAutoReply(targetId){
     renderChatMessages(msgs);
     renderRecentChatsList();
     if(typeof showToast === 'function') showToast(`New message from ${autoReply.senderName}`);
+    if(typeof playSfx === 'function') playSfx('receive');
   }, 1400);
 }
 
@@ -704,8 +729,8 @@ function renderRecentChatsList(){
   container.innerHTML = '';
 
   const allChats = [
-    ...myGroupsCache.map(g => ({ id: g.id, title: g.name, isGroup: true, lastMsg: 'Project update specs and UI...', time: '10:45 AM', unread: 2 })),
-    ...myFriendsCache.map(f => ({ id: f.uid, title: f.displayName, isGroup: false, lastMsg: 'Hello! Auto-translated message preview', time: 'Yesterday', unread: 0 }))
+    ...myGroupsCache.map(g => ({ id: g.id, title: g.name, isGroup: true, lastMsg: t('tapToOpen') || 'Tap to open', time: '', unread: 0 })),
+    ...myFriendsCache.map(f => ({ id: f.uid, title: f.displayName, isGroup: false, lastMsg: t('tapToOpen') || 'Tap to open', time: '', unread: 0 }))
   ];
 
   if(allChats.length === 0){

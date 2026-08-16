@@ -6,6 +6,8 @@
 
 const UI_STRINGS = {
   en: {
+    translateNow: "Translate",
+    tapToOpen: "Tap to open",
     appTitle: "OmniTalk",
     appTagline: "Speak Local, Connect Global",
     tabChats: "Chats",
@@ -69,6 +71,8 @@ const UI_STRINGS = {
     qrCodeTitle: "My OmniTalk QR Code"
   },
   zh: {
+    translateNow: "翻译",
+    tapToOpen: "点击打开",
     appTitle: "OmniTalk",
     appTagline: "跨界畅联，无界沟通",
     tabChats: "消息",
@@ -132,6 +136,8 @@ const UI_STRINGS = {
     qrCodeTitle: "我的专属二维码"
   },
   th: {
+    translateNow: "แปล",
+    tapToOpen: "แตะเพื่อเปิด",
     appTitle: "OmniTalk",
     appTagline: "สื่อสารไร้พรมแดน เชื่อมต่อทุกภาษา",
     tabChats: "แชท",
@@ -195,6 +201,8 @@ const UI_STRINGS = {
     qrCodeTitle: "คิวอาร์โค้ดของฉัน"
   },
   my: {
+    translateNow: "ဘာသာပြန်ရန်",
+    tapToOpen: "ဖွင့်ရန် နှိပ်ပါ",
     appTitle: "OmniTalk",
     appTagline: "Speak Local, Connect Global",
     tabChats: "မက်ဆေ့ခ်ျ",

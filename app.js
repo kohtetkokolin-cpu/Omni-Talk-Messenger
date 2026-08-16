@@ -9,7 +9,7 @@
    - Force Cache Wipe & Reload Control
 ========================================================== */
 
-const APP_VERSION = 'PRO v10.1.0 (Build 2026.08.15.11)';
+const APP_VERSION = 'PRO v10.2.0 (Build 2026.08.16.12)';
 
 const state = {
   activeTab: 'chats',
@@ -26,6 +26,7 @@ const state = {
   uiLanguage: 'my',
   autoTranslate: true,
   autoTranscribe: true,
+  autoSpeak: false,
   autoSpeakWalkie: true,
   soundEffects: true,
   voiceSpeed: 1.0,
@@ -109,6 +110,27 @@ function showToast(message, type){
 
 function vibrate(ms = 10){
   try { if(navigator.vibrate) navigator.vibrate(ms); } catch(e){}
+}
+
+let sfxAudioCtx = null;
+/** Short UI beep for message send/receive — gated by the Sound Effects
+    toggle in Settings. Uses a Web Audio oscillator, no external file. */
+function playSfx(kind = 'send'){
+  if(typeof state !== 'undefined' && state.soundEffects === false) return;
+  try{
+    if(!sfxAudioCtx) sfxAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = sfxAudioCtx;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = kind === 'receive' ? 660 : 880;
+    gain.gain.setValueAtTime(0.08, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.13);
+  }catch(e){}
 }
 
 function formatTime(ts){
@@ -583,14 +605,76 @@ function initQuickTranslateUI(){
 
   const camInput = document.getElementById('qtCameraFileInput');
   document.getElementById('qtCameraBtn').onclick = () => camInput.click();
-  camInput.onchange = (e) => {
+  camInput.onchange = async (e) => {
     const file = e.target.files?.[0];
     if(!file) return;
     vibrate(12);
-    showToast('Photo uploaded! Gemini AI extracting text...');
-    inputArea.value = 'Operational Safety Guideline: Always wear protective gear and check defect rate before operating machinery.';
-    document.getElementById('qtTranslateActionBtn').click();
+    e.target.value = ''; // allow re-selecting the same file next time
+    inputArea.value = '';
+    resultCard.style.display = 'block';
+    resultText.innerHTML = '<span style="color:#38BDF8;">📷 Photo ထဲက စာသားကို ဖတ်နေပါသည်...</span>';
+    try{
+      const extracted = await extractTextFromImage(file, srcSel.value);
+      if(!extracted){
+        resultText.innerHTML = '<span style="color:#F87171;">⚠️ ဒီပုံထဲမှာ စာသား မတွေ့ပါ — ရှင်းရှင်းလင်းလင်း ဓာတ်ပုံ ထပ်စမ်းကြည့်ပါ</span>';
+        return;
+      }
+      inputArea.value = extracted;
+      document.getElementById('qtTranslateActionBtn').click();
+    }catch(err){
+      console.warn('OCR failed:', err);
+      resultText.innerHTML = '<span style="color:#F87171;">⚠️ ဓာတ်ပုံထဲက စာသား ထုတ်ယူလို့ မရပါ — API key/internet စစ်ကြည့်ပါ</span>';
+    }
   };
+}
+
+/** Real OCR via Gemini vision — reads an image and returns the text found
+    in it (in its original language), using the same key rotation as
+    regular translation. Returns '' if no key is configured or nothing
+    was found. */
+async function extractTextFromImage(file, hintLangCode){
+  const keys = (state.apiKeys || []).map(k => (k||'').trim()).filter(Boolean);
+  if(!keys.length){
+    showToast('OCR အတွက် Gemini API key လိုအပ်ပါတယ် — Settings မှာ ထည့်ပါ', 'error');
+    return '';
+  }
+  const base64 = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+  const prompt = `Read every piece of text visible in this image exactly as written (signs, labels, documents, screens — anything). `
+    + `Output ONLY the raw extracted text, preserving line breaks, no translation, no explanation, no markdown. `
+    + `If there is truly no readable text in the image, output exactly: NONE`;
+
+  const attempt = async () => {
+    const key = currentApiKey();
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${key}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [
+          { text: prompt },
+          { inline_data: { mime_type: file.type || 'image/jpeg', data: base64 } }
+        ] }],
+        generationConfig: { temperature: 0.1 }
+      })
+    });
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, status: res.status, text: data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '' };
+  };
+
+  let result = await attempt();
+  let rotations = 0;
+  while((result.status === 429 || result.status >= 500) && rotations < keys.length - 1){
+    if(result.status === 429) markKeyExhausted(currentApiKey());
+    if(!rotateApiKey()) break;
+    result = await attempt();
+    rotations++;
+  }
+  if(!result.ok || !result.text || result.text.trim().toUpperCase() === 'NONE') return '';
+  return result.text.trim();
 }
 
 function addQTHistory(srcText, transText, sLang, tLang){
@@ -831,6 +915,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       if(speedSlider) speedSlider.value = savedSpeed;
       if(speedDisplay) speedDisplay.textContent = savedSpeed + 'x';
     }
+    [
+      ['autoTranslateToggle', 'autoTranslate', 'ot_autoTranslate'],
+      ['autoTranscribeToggle', 'autoTranscribe', 'ot_autoTranscribe'],
+      ['autoSpeakToggle', 'autoSpeak', 'ot_autoSpeak'],
+      ['soundEffectsToggle', 'soundEffects', 'ot_soundEffects'],
+    ].forEach(([elId, stateKey, storageKey]) => {
+      const saved = localStorage.getItem(storageKey);
+      if(saved !== null) state[stateKey] = saved === '1';
+      const el = document.getElementById(elId);
+      if(el) el.checked = state[stateKey];
+    });
   } catch(e){}
 
   const langSelect = document.getElementById('uiLangSelect');
@@ -885,6 +980,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     try { localStorage.setItem('ot_voiceSpeed', e.target.value); } catch(err){}
   });
 
+  // Behavior toggles — Auto-Translate / Auto-Transcribe / Auto-Speak / Sound Effects
+  const toggleBindings = [
+    ['autoTranslateToggle', 'autoTranslate', 'ot_autoTranslate'],
+    ['autoTranscribeToggle', 'autoTranscribe', 'ot_autoTranscribe'],
+    ['autoSpeakToggle', 'autoSpeak', 'ot_autoSpeak'],
+    ['soundEffectsToggle', 'soundEffects', 'ot_soundEffects'],
+  ];
+  toggleBindings.forEach(([elId, stateKey, storageKey]) => {
+    const el = document.getElementById(elId);
+    if(!el) return;
+    el.addEventListener('change', (e) => {
+      state[stateKey] = e.target.checked;
+      try { localStorage.setItem(storageKey, e.target.checked ? '1' : '0'); } catch(err){}
+    });
+  });
+
   // Save API Key Button
   document.getElementById('btnSaveApiKey')?.addEventListener('click', async () => {
     const val1 = (document.getElementById('apiKeyInput')?.value || '').trim();
@@ -935,6 +1046,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if(input && input.value.trim()){
       fbSendMessage(input.value.trim());
       input.value = '';
+      playSfx('send');
     }
   });
 
@@ -1144,7 +1256,8 @@ function startVoiceRecord(){
   voiceAccumulatedFinal = '';
 
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if(!SpeechRecognition){
+  const wantsAutoTranscribe = (typeof state === 'undefined' || state.autoTranscribe !== false);
+  if(!SpeechRecognition || !wantsAutoTranscribe){
     voiceRec = null;
     return; // stopVoiceRecord() will prompt for manual text entry instead
   }
