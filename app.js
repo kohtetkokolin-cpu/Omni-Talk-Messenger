@@ -9,7 +9,7 @@
    - Force Cache Wipe & Reload Control
 ========================================================== */
 
-const APP_VERSION = 'PRO v10.2.0 (Build 2026.08.16.12)';
+const APP_VERSION = 'PRO v10.3.0 (Build 2026.08.16.13)';
 
 const state = {
   activeTab: 'chats',
@@ -388,11 +388,20 @@ function initWalkieTalkieUI(){
 }
 
 /** Push-to-Talk (PTT) with Real-Time GBoard-Style Streaming */
+const pttBoundButtons = new Set();
 function setupWalkiePTTMic(btnId, myBoxId, getSrcLang, getTgtLang, otherBoxId){
   const btn = document.getElementById(btnId);
   const myBox = document.getElementById(myBoxId);
   const otherBox = document.getElementById(otherBoxId);
   if(!btn) return;
+  // initWalkieTalkieUI() runs every time the Walkie-Talkie screen is
+  // opened — without this guard, re-opening it (a completely normal thing
+  // to do) would attach a second, third, etc. set of listeners to the
+  // same button, causing multiple SpeechRecognition sessions to compete
+  // for the same mic press and produce unpredictable "nothing sent"
+  // behavior. Bind once per button, ever.
+  if(pttBoundButtons.has(btnId)) return;
+  pttBoundButtons.add(btnId);
 
   let activeRec = null;
   let accumulatedFinal = '';
@@ -529,7 +538,8 @@ function initQuickTranslateUI(){
   const resultCard = document.getElementById('qtResultCard');
   const resultText = document.getElementById('qtResultText');
 
-  document.getElementById('qtPasteBtn')?.addEventListener('click', async () => {
+  const qtPasteBtn = document.getElementById('qtPasteBtn');
+  if(qtPasteBtn) qtPasteBtn.onclick = async () => {
     try {
       const clipText = await navigator.clipboard.readText();
       if(clipText){
@@ -540,7 +550,7 @@ function initQuickTranslateUI(){
     } catch(e){
       showToast('Please paste text manually into the box.', 'info');
     }
-  });
+  };
 
   document.getElementById('qtClearBtn').onclick = () => {
     inputArea.value = '';
@@ -866,6 +876,14 @@ function renderPhraseCards(cat, query){
    DOM READY & CORE ATTACHMENTS
 ========================================================= */
 document.addEventListener('DOMContentLoaded', async () => {
+  // Single source of truth for the visible version — from now on, bumping
+  // APP_VERSION at the top of this file is the only thing needed; nothing
+  // else to remember to update by hand.
+  const versionBadgeEl = document.getElementById('topVersionBadge');
+  if(versionBadgeEl){
+    const shortVer = (APP_VERSION.match(/v[\d.]+/) || [APP_VERSION])[0];
+    versionBadgeEl.textContent = 'PRO ' + shortVer;
+  }
   try {
     const savedLang = localStorage.getItem('ot_uiLanguage');
     if(savedLang) state.uiLanguage = savedLang;
@@ -1123,7 +1141,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Force Clear Cache & Reload v10.0 Button
   document.getElementById('btnForceClearCache')?.addEventListener('click', async () => {
-    showToast('Clearing all caches and updating to v10.0...', 'info');
+    showToast('Clearing all caches and updating......', 'info');
     if('caches' in window){
       try {
         const keys = await caches.keys();

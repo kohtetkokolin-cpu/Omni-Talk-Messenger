@@ -1,5 +1,5 @@
 // OmniTalk PRO v10.0 — Service Worker
-const CACHE_VERSION = 'omnitalk-pro-v10-2';
+const CACHE_VERSION = 'omnitalk-pro-v10-3';
 
 const SHELL_FILES = [
   './',
