@@ -9,7 +9,7 @@
    - Force Cache Wipe & Reload Control
 ========================================================== */
 
-const APP_VERSION = 'PRO v10.3.0 (Build 2026.08.16.13)';
+const APP_VERSION = 'PRO v10.4.0 (Build 2026.08.16.14)';
 
 const state = {
   activeTab: 'chats',
@@ -160,7 +160,11 @@ function primeAudioOnUserGesture(){
   }
 }
 
-/** Master Voice TTS Player (Cloud Neural Audio + Web Speech API) */
+/** Master Voice TTS Player — tries the device's own built-in voice first
+    (instant, reliable, works offline) and only falls back to an unofficial
+    Google TTS endpoint when the device has no voice for the language at
+    all. The unofficial endpoint is not something to depend on as primary:
+    it isn't a documented API and can silently fail or get blocked. */
 function speakText(text, langCode){
   if(!text || !text.trim()) return;
   const clean = text.trim();
@@ -173,17 +177,24 @@ function speakText(text, langCode){
     try { window.speechSynthesis.cancel(); } catch(e){}
   }
 
-  // Cloud Neural Audio Stream (Instant human-like voice for Myanmar, Thai, Chinese, English)
+  const langObj = langByCode(sLang);
+  const targetLocale = langObj ? langObj.ttsLocale : (sLang === 'my' ? 'my-MM' : sLang);
+  const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+  const hasDeviceVoice = voices && voices.some(v => v.lang.startsWith(targetLocale.slice(0, 2)) || v.lang.startsWith(sLang));
+
+  if(hasDeviceVoice){
+    fallbackWebSpeechTTS(clean, sLang);
+    return;
+  }
+
+  // No device voice for this language — try the (unofficial, best-effort)
+  // cloud endpoint, and fall back to Web Speech's default voice either way.
   const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${sLang}&client=tw-ob&q=${encodeURIComponent(clean.slice(0, 200))}`;
-  
   try {
     globalAudioPlayer = new Audio(ttsUrl);
     globalAudioPlayer.playbackRate = state.voiceSpeed || 1.0;
-    
-    globalAudioPlayer.play().then(() => {
-      console.log('Playing Cloud TTS audio for:', sLang);
-    }).catch(err => {
-      console.warn('Cloud audio blocked by autoplay, using WebSpeech fallback:', err);
+    globalAudioPlayer.play().catch(err => {
+      console.warn('Cloud TTS blocked, using WebSpeech fallback:', err);
       fallbackWebSpeechTTS(clean, sLang);
     });
   } catch(e) {
@@ -385,6 +396,33 @@ function initWalkieTalkieUI(){
 
   setupWalkiePTTMic('walkieMicA', 'walkieSpeechA', () => state.langA.code, () => state.langB.code, 'walkieSpeechB');
   setupWalkiePTTMic('walkieMicB', 'walkieSpeechB', () => state.langB.code, () => state.langA.code, 'walkieSpeechA');
+  setupWalkieTypeSend('walkieTypeA', 'walkieSendA', 'walkieSpeechA', () => state.langA.code, () => state.langB.code, 'walkieSpeechB');
+  setupWalkieTypeSend('walkieTypeB', 'walkieSendB', 'walkieSpeechB', () => state.langB.code, () => state.langA.code, 'walkieSpeechA');
+}
+
+// Explicit type-and-send fallback — press-and-hold speech recognition can
+// be unreliable on some devices/browsers, so this gives a guaranteed way
+// to trigger a translation without relying on a gesture at all.
+const walkieTypeBound = new Set();
+function setupWalkieTypeSend(inputId, btnId, myBoxId, getSrcLang, getTgtLang, otherBoxId){
+  const input = document.getElementById(inputId);
+  const btn = document.getElementById(btnId);
+  const myBox = document.getElementById(myBoxId);
+  const otherBox = document.getElementById(otherBoxId);
+  if(!input || !btn || walkieTypeBound.has(inputId)) return;
+  walkieTypeBound.add(inputId);
+
+  const doSend = () => {
+    const text = input.value.trim();
+    if(!text) return;
+    input.value = '';
+    vibrate(10);
+    processWalkieTranslation(text, getSrcLang(), getTgtLang(), myBox, otherBox);
+  };
+  btn.addEventListener('click', doSend);
+  input.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter'){ e.preventDefault(); doSend(); }
+  });
 }
 
 /** Push-to-Talk (PTT) with Real-Time GBoard-Style Streaming */
