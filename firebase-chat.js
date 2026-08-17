@@ -72,9 +72,34 @@ async function fbInit(){
     return true;
   }catch(e){
     console.error('Firebase init error:', e);
+    const reason = firebaseErrorHint(e);
+    if(typeof showToast === 'function'){
+      showToast(`⚠️ Firebase ချိတ်ဆက်မရပါ — ${reason} (Demo mode ပြသနေပါသည်)`, 'error');
+    }
     setupLocalDemoUser();
     return false;
   }
+}
+
+/** Turns a raw Firebase error into a specific, actionable Burmese hint —
+    the most common causes are simple Firebase Console setup steps that
+    were skipped, not actual bugs. */
+function firebaseErrorHint(e){
+  const code = e?.code || '';
+  const msg = e?.message || String(e);
+  if(code.includes('auth/admin-restricted-operation') || code.includes('auth/operation-not-allowed')){
+    return 'Anonymous Authentication ကို Firebase Console → Authentication → Sign-in method မှာ Enable လုပ်ဖို့ လိုပါတယ်';
+  }
+  if(code.includes('permission-denied') || msg.includes('permission')){
+    return 'Firestore Security Rules ကို Publish မလုပ်ရသေးပါ (Firebase Console → Firestore Database → Rules)';
+  }
+  if(code.includes('unavailable') || msg.includes('offline') || msg.includes('network')){
+    return 'Internet connection (သို့) Firestore Database ကို Create မလုပ်ရသေးဘူးလား စစ်ကြည့်ပါ';
+  }
+  if(code.includes('invalid-api-key') || msg.includes('API key')){
+    return 'API key မှားနေနိုင်ပါတယ် — repo Secrets ထဲက FIREBASE_API_KEY ကို ပြန်စစ်ပါ';
+  }
+  return msg.slice(0, 100);
 }
 
 function setupLocalDemoUser(){

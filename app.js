@@ -9,7 +9,7 @@
    - Force Cache Wipe & Reload Control
 ========================================================== */
 
-const APP_VERSION = 'PRO v10.4.0 (Build 2026.08.16.14)';
+const APP_VERSION = 'PRO v10.5.0 (Build 2026.08.17.15)';
 
 const state = {
   activeTab: 'chats',
