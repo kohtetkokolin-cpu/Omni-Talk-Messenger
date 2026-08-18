@@ -32,3 +32,4 @@
 1. Configure your Firebase project by following `FIREBASE_SETUP.md`.
 2. Edit `firebase-config.js` with your Firebase project credentials.
 3. Push files to your GitHub repository and enable **GitHub Pages** (Settings > Pages > Source: main branch / root).
+4. 
